@@ -27,7 +27,6 @@ subtle = "2.5.0"
 thiserror = "1.0"
 
 # dependencies required if feature "experimental" is enabled
-fixed = { version = "1.23", optional = true }
 num-bigint = { version = "0.4.3", optional = true }
 num-traits = { version = "0.2.15", optional = true }
 
