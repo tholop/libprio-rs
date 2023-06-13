@@ -38,7 +38,7 @@ use crate::flp::gadgets::PolyEval;
 use crate::flp::gadgets::{BlindPolyEval, ParallelSum};
 #[cfg(feature = "experimental")]
 use crate::flp::types::fixedpoint_l2::{
-    compatible_float::CompatibleFloat, FixedPointBoundedL2VecSum, PrivacyParameterType,
+    compatible_float::CompatibleFloat, FixedPointBoundedL2VecSum,
 };
 use crate::flp::types::{Average, Count, Histogram, Sum, SumVec};
 use crate::flp::Type;
@@ -162,13 +162,9 @@ impl<Fx: Fixed + CompatibleFloat> Prio3FixedPointBoundedL2VecSum<Fx> {
     pub fn new_fixedpoint_boundedl2_vec_sum(
         num_aggregators: u8,
         entries: usize,
-        noise_parameter: PrivacyParameterType,
     ) -> Result<Self, VdafError> {
         check_num_aggregators(num_aggregators)?;
-        Prio3::new(
-            num_aggregators,
-            FixedPointBoundedL2VecSum::new(entries, noise_parameter)?,
-        )
+        Prio3::new(num_aggregators, FixedPointBoundedL2VecSum::new(entries)?)
     }
 }
 
@@ -197,13 +193,9 @@ impl<Fx: Fixed + CompatibleFloat> Prio3FixedPointBoundedL2VecSumMultithreaded<Fx
     pub fn new_fixedpoint_boundedl2_vec_sum_multithreaded(
         num_aggregators: u8,
         entries: usize,
-        noise_parameter: PrivacyParameterType,
     ) -> Result<Self, VdafError> {
         check_num_aggregators(num_aggregators)?;
-        Prio3::new(
-            num_aggregators,
-            FixedPointBoundedL2VecSum::new(entries, noise_parameter)?,
-        )
+        Prio3::new(num_aggregators, FixedPointBoundedL2VecSum::new(entries)?)
     }
 }
 
@@ -912,6 +904,7 @@ where
     type PrepareState = Prio3PrepareState<T::Field, SEED_SIZE>;
     type PrepareShare = Prio3PrepareShare<T::Field, SEED_SIZE>;
     type PrepareMessage = Prio3PrepareMessage<SEED_SIZE>;
+    type DifferentialPrivacyParam = T::DifferentialPrivacyParam;
 
     /// Begins the Prep process with the other aggregators. The result of this process is
     /// the aggregator's output share.
@@ -1154,13 +1147,14 @@ where
 
     #[cfg(feature = "experimental")]
     /// Add noise for this prio3 type to obtain differential privacy.
-    fn postprocess(
+    fn apply_differential_privacy_noise(
         &self,
-        _agg_param: &Self::AggregationParam,
+        dp_param: &Self::DifferentialPrivacyParam,
         agg_share: &mut Self::AggregateShare,
     ) -> Result<(), VdafError> {
         let len_before = agg_share.0.len();
-        self.typ.add_differential_privacy_noise(&mut agg_share.0)?;
+        self.typ
+            .add_differential_privacy_noise(&mut agg_share.0, dp_param)?;
         if len_before != agg_share.0.len() {
             return Err(VdafError::Uncategorized(
                 "add_noise changed length of aggregate share.".to_string(),

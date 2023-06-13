@@ -212,6 +212,10 @@ pub trait Aggregator<const VERIFY_KEY_SIZE: usize, const NONCE_SIZE: usize>: Vda
     /// associated with any aggregator involved in the execution of the VDAF.
     type PrepareMessage: Clone + Debug + ParameterizedDecode<Self::PrepareState> + Encode;
 
+    /// The type of the differential privacy parameter used for configuring the noise applied in the
+    /// [`Aggregator::apply_differential_privacy_noise`] function.
+    type DifferentialPrivacyParam: Clone + Debug;
+
     /// Begins the Prepare process with the other Aggregators. The [`Self::PrepareState`] returned
     /// is passed to [`Aggregator::prepare_step`] to get this aggregator's first-round prepare
     /// message.
@@ -252,15 +256,14 @@ pub trait Aggregator<const VERIFY_KEY_SIZE: usize, const NONCE_SIZE: usize>: Vda
     ) -> Result<Self::AggregateShare, VdafError>;
 
     #[cfg(feature = "experimental")]
-    /// This is special dpsa-project functionality.
-    /// In order to implement noising for differential privacy,
-    /// We define a custom postprocessing function for vdafs,
-    /// such that each aggregator can call it on its aggregate shares.
+    /// Applies noise to an aggregate share in order to achieve differential privacy.
     ///
-    /// The default implementation is the identity function.
-    fn postprocess(
+    /// The default implementation adds no noise. Otherwise, the VDAF is responsible
+    /// for choosing an appropriate [`Self::DifferentialPrivacyParam`], and to apply
+    /// noise correctly in the implementation of this function.
+    fn apply_differential_privacy_noise(
         &self,
-        _agg_param: &Self::AggregationParam,
+        _dp_param: &Self::DifferentialPrivacyParam,
         _agg_share: &mut Self::AggregateShare,
     ) -> Result<(), VdafError> {
         Ok(())

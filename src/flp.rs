@@ -131,6 +131,9 @@ pub trait Type: Sized + Eq + Clone + Debug {
     /// The finite field used for this type.
     type Field: FftFriendlyFieldElement;
 
+    /// The type of the parameter used for configuring differential privacy for this type.
+    type DifferentialPrivacyParam: Clone + Debug;
+
     /// Encodes a measurement as a vector of [`Self::input_len`] field elements.
     fn encode_measurement(
         &self,
@@ -555,6 +558,7 @@ pub trait Type: Sized + Eq + Clone + Debug {
     fn add_differential_privacy_noise(
         &self,
         _aggregate_share: &mut [Self::Field],
+        _dp_param: &Self::DifferentialPrivacyParam,
     ) -> Result<(), FlpError> {
         Ok(())
     }
