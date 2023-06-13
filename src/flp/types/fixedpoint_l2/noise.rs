@@ -49,7 +49,7 @@ use num_traits::{One, Signed, Zero};
 use std::convert::TryInto;
 use std::error;
 
-type RandResult<R> = Result<R, Box<dyn error::Error>>;
+type RandResult<R> = Result<R, Box<dyn error::Error + 'static + Send + Sync>>;
 
 /// Sample from the discrete uniform distribution over BigUint of given bit size.
 ///

@@ -608,12 +608,12 @@ where
             // 1. get noise
             let (ref a, ref b) = self.noise_standard_deviation;
             let noise: BigInt = sample_discrete_gaussian(a, b)
-                .map_err(|e| FlpError::DifferentialPrivacyNoise(e.to_string()))?;
+                .map_err(|e| FlpError::DifferentialPrivacyNoise(e))?;
 
             // 2. noise as i128
             let noise: BigInt = noise % BigInt::from(Field128::modulus());
             let noise: i128 = noise.try_into().map_err(|e: TryFromBigIntError<BigInt>| {
-                FlpError::DifferentialPrivacyNoise(e.to_string())
+                FlpError::DifferentialPrivacyNoise(Box::new(e))
             })?;
 
             // Compute the field element corresponding to the i128 value.

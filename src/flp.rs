@@ -107,7 +107,7 @@ pub enum FlpError {
     #[cfg(feature = "experimental")]
     /// An error happened during noising.
     #[error("noise error: {0}")]
-    DifferentialPrivacyNoise(String),
+    DifferentialPrivacyNoise(Box<dyn std::error::Error + 'static + Send + Sync>),
 
     /// Unit test error.
     #[cfg(test)]
