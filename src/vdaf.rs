@@ -5,6 +5,8 @@
 //!
 //! [draft-irtf-cfrg-vdaf-05]: https://datatracker.ietf.org/doc/draft-irtf-cfrg-vdaf/05/
 
+#[cfg(feature = "experimental")]
+use crate::dp::{Dist, DpError};
 #[cfg(all(feature = "crypto-dependencies", feature = "experimental"))]
 use crate::idpf::IdpfError;
 use crate::{
@@ -52,6 +54,11 @@ pub enum VdafError {
     #[cfg(all(feature = "crypto-dependencies", feature = "experimental"))]
     #[error("idpf error: {0}")]
     Idpf(#[from] IdpfError),
+
+    /// DP error.
+    #[cfg(feature = "experimental")]
+    #[error("dp error: {0}")]
+    Dp(#[from] DpError),
 }
 
 /// An additive share of a vector of field elements.
@@ -248,6 +255,38 @@ pub trait Aggregator<const VERIFY_KEY_SIZE: usize, const NONCE_SIZE: usize>: Vda
         agg_param: &Self::AggregationParam,
         output_shares: M,
     ) -> Result<Self::AggregateShare, VdafError>;
+
+    #[cfg(feature = "experimental")]
+    /// Adds noise to an aggregate share to achieve differential privacy.
+    /// The noise is drawn from the `dist` distribution, which contains
+    /// the relevant DP parameters.
+    ///
+    /// TODO(tholop): VDAFs that don't want DP can make it a no-op.
+    ///               How about VDAFs that sometimes want DP and sometimes not?
+    ///               Leave it up to them how they implement their `dist` parameter,
+    ///               potentially with a `None` variant?
+    fn add_noise_to_agg_share<D: Dist>(
+        &self,
+        agg_share: &mut Self::AggregateShare,
+        dist: &D,
+        // TODO(tholop): should `dist` incorporate `num_measurements` directly?
+        //               I think that we want Option 2 since `dist` is fixed
+        //               at the beginning of the task?
+        //
+        // 1. if the code constructing `dist` has access to `num_measurements`, it could be cleaner to
+        //    fold `num_measurements` into directly into `dist`, e.g. when we compute the
+        //    sensitivity from the VDAF and the number of measurements.
+        //    (i.e. `dist` is the true distribution we sample from)
+        // 2. else, we can add a "scaling" step in `add_noise_to_agg_share` to modify
+        //    the noise sampled from `dist` once we know `num_measurements`
+        //    (i.e. `dist` is a canonical disttribution, and we rescale it after sampling)
+        //    In that case, we need to communicate `num_measurements` to the Collector too.
+        //
+        // So far, all our Vdafs have sensitivity independent on `num_measurements`,
+        // so the scaling step would be a no-op. For a hypothetical `Prio3Average`, the
+        // scaling step would multiply the noise by something like `1/num_measurements`.
+        num_measurements: usize,
+    ) -> Result<(), VdafError>;
 }
 
 /// The Collector's role in the execution of a VDAF.
