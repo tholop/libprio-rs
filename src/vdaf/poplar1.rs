@@ -1064,6 +1064,7 @@ impl<P: Prg<SEED_SIZE>, const SEED_SIZE: usize> Aggregator<SEED_SIZE, 16>
     #[cfg(feature = "experimental")]
     fn add_noise_to_agg_share<D: Dist>(
         &self,
+        _agg_param: &Poplar1AggregationParam,
         _agg_share: &mut Self::AggregateShare,
         _dist: &D,
         _num_measurements: usize,

@@ -280,6 +280,7 @@ impl Aggregator<32, 16> for Prio2 {
     #[cfg(feature = "experimental")]
     fn add_noise_to_agg_share<D: Dist>(
         &self,
+        _agg_param: &Self::AggregationParam,
         _agg_share: &mut Self::AggregateShare,
         _dist: &D,
         _num_measurements: usize,
