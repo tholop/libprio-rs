@@ -50,6 +50,7 @@ pub trait Dist: Clone + Debug {
 /// TODO(tholop): depending on how we handle `num_measurements`, rename `sensitivity`
 /// to something like `base_sensitivity` or `sensitivity_when_num_measurements_is_1`,
 /// and explain that `add_noise_to_agg_share` is in charge of scaling the noise properly.
+#[allow(dead_code)]
 pub struct DiscreteGaussian {
     epsilon: BigRational,
     delta: BigRational,
@@ -57,8 +58,10 @@ pub struct DiscreteGaussian {
     sensitivity: BigRational,
 }
 
+#[allow(unused_variables)]
 impl DiscreteGaussian {
+    /// Create a new DiscreteGaussian distribution with the given DP parameters.
     pub fn new(epsilon: BigRational, delta: BigRational, sensitivity: BigRational) -> Self {
-        let sigma = todo!();
+        todo!();
     }
 }

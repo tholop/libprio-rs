@@ -29,6 +29,8 @@
 
 use super::prg::PrgSha3;
 use crate::codec::{CodecError, Decode, Encode, ParameterizedDecode};
+#[cfg(feature = "experimental")]
+use crate::dp::Dist;
 use crate::field::{decode_fieldvec, FftFriendlyFieldElement, FieldElement};
 use crate::field::{Field128, Field64};
 #[cfg(feature = "multithreaded")]
@@ -55,7 +57,6 @@ use std::fmt::Debug;
 use std::io::Cursor;
 use std::iter::{self, IntoIterator};
 use std::marker::PhantomData;
-
 const DST_MEASUREMENT_SHARE: u16 = 1;
 const DST_PROOF_SHARE: u16 = 2;
 const DST_JOINT_RANDOMNESS: u16 = 3;
@@ -1134,6 +1135,16 @@ where
         }
 
         Ok(agg_share)
+    }
+
+    #[cfg(feature = "experimental")]
+    fn add_noise_to_agg_share<D: Dist>(
+        &self,
+        _agg_share: &mut Self::AggregateShare,
+        _dist: &D,
+        _num_measurements: usize,
+    ) -> Result<(), VdafError> {
+        Ok(())
     }
 }
 

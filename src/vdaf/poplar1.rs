@@ -4,6 +4,8 @@
 //!
 //! [draft-irtf-cfrg-vdaf-05]: https://datatracker.ietf.org/doc/draft-irtf-cfrg-vdaf/05/
 
+#[cfg(feature = "experimental")]
+use crate::dp::Dist;
 use crate::{
     codec::{CodecError, Decode, Encode, ParameterizedDecode},
     field::{decode_fieldvec, merge_vector, Field255, Field64, FieldElement},
@@ -25,7 +27,6 @@ use std::{
     ops::{Add, AddAssign, Sub},
 };
 use subtle::{Choice, ConditionallyNegatable, ConditionallySelectable, ConstantTimeEq};
-
 const DST_SHARD_RANDOMNESS: u16 = 1;
 const DST_CORR_INNER: u16 = 2;
 const DST_CORR_LEAF: u16 = 3;
@@ -1058,6 +1059,16 @@ impl<P: Prg<SEED_SIZE>, const SEED_SIZE: usize> Aggregator<SEED_SIZE, 16>
             agg_param.prefixes.len(),
             output_shares,
         )
+    }
+
+    #[cfg(feature = "experimental")]
+    fn add_noise_to_agg_share<D: Dist>(
+        &self,
+        _agg_share: &mut Self::AggregateShare,
+        _dist: &D,
+        _num_measurements: usize,
+    ) -> Result<(), VdafError> {
+        Ok(())
     }
 }
 
