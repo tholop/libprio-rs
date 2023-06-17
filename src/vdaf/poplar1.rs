@@ -4,8 +4,6 @@
 //!
 //! [draft-irtf-cfrg-vdaf-05]: https://datatracker.ietf.org/doc/draft-irtf-cfrg-vdaf/05/
 
-#[cfg(feature = "experimental")]
-use crate::dp::Dist;
 use crate::{
     codec::{CodecError, Decode, Encode, ParameterizedDecode},
     field::{decode_fieldvec, merge_vector, Field255, Field64, FieldElement},
@@ -1059,17 +1057,6 @@ impl<P: Prg<SEED_SIZE>, const SEED_SIZE: usize> Aggregator<SEED_SIZE, 16>
             agg_param.prefixes.len(),
             output_shares,
         )
-    }
-
-    #[cfg(feature = "experimental")]
-    fn add_noise_to_agg_share<D: Dist>(
-        &self,
-        _agg_param: &Poplar1AggregationParam,
-        _agg_share: &mut Self::AggregateShare,
-        _dist: &D,
-        _num_measurements: usize,
-    ) -> Result<(), VdafError> {
-        Ok(())
     }
 }
 

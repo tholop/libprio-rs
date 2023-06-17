@@ -6,7 +6,7 @@
 //! [draft-irtf-cfrg-vdaf-05]: https://datatracker.ietf.org/doc/draft-irtf-cfrg-vdaf/05/
 
 #[cfg(feature = "experimental")]
-use crate::dp::Dist;
+use crate::dp::Distribution;
 #[cfg(all(feature = "crypto-dependencies", feature = "experimental"))]
 use crate::idpf::IdpfError;
 use crate::{
@@ -250,18 +250,19 @@ pub trait Aggregator<const VERIFY_KEY_SIZE: usize, const NONCE_SIZE: usize>: Vda
         agg_param: &Self::AggregationParam,
         output_shares: M,
     ) -> Result<Self::AggregateShare, VdafError>;
+}
 
-    #[cfg(feature = "experimental")]
+/// Aggregator that implements differential privacy with aggregator-side noise addition
+#[cfg(feature = "experimental")]
+pub trait AggregatorWithNoise<const VERIFY_KEY_SIZE: usize, const NONCE_SIZE: usize>:
+    Aggregator<VERIFY_KEY_SIZE, NONCE_SIZE>
+{
     /// Adds noise to an aggregate share to achieve differential privacy.
     /// The `dist` distribution contains the relevant DP parameters.
-    /// The noise is drawn from `dist` and then scaled by `num_measurements`
-    /// if necessary, in order to enforce the desired privacy level.
-    ///
-    /// TODO(tholop): VDAFs that don't want DP can make it a no-op.
-    ///               How about VDAFs that sometimes want DP and sometimes not?
-    ///               Leave it up to them how they implement their `dist` parameter,
-    ///               potentially with a `None` variant?
-    fn add_noise_to_agg_share<D: Dist>(
+    /// The noise is drawn from `dist` and then scaled by the right
+    /// sensitivity (which can depend on `num_measurements` and the type of VDAF)
+    /// in order to enforce the desired privacy level.
+    fn add_noise_to_agg_share<D: Distribution>(
         &self,
         agg_param: &Self::AggregationParam,
         agg_share: &mut Self::AggregateShare,

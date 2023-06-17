@@ -29,8 +29,6 @@
 
 use super::prg::PrgSha3;
 use crate::codec::{CodecError, Decode, Encode, ParameterizedDecode};
-#[cfg(feature = "experimental")]
-use crate::dp::Dist;
 use crate::field::{decode_fieldvec, FftFriendlyFieldElement, FieldElement};
 use crate::field::{Field128, Field64};
 #[cfg(feature = "multithreaded")]
@@ -1135,17 +1133,6 @@ where
         }
 
         Ok(agg_share)
-    }
-
-    #[cfg(feature = "experimental")]
-    fn add_noise_to_agg_share<D: Dist>(
-        &self,
-        _agg_param: &Self::AggregationParam,
-        _agg_share: &mut Self::AggregateShare,
-        _dist: &D,
-        _num_measurements: usize,
-    ) -> Result<(), VdafError> {
-        Ok(())
     }
 }
 

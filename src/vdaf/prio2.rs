@@ -4,8 +4,6 @@
 //! [`Client`](crate::client::Client) and [`Server`](crate::server::Server).
 
 use super::{AggregateShare, OutputShare};
-#[cfg(feature = "experimental")]
-use crate::dp::Dist;
 use crate::{
     client as v2_client,
     codec::{CodecError, Decode, Encode, ParameterizedDecode},
@@ -275,17 +273,6 @@ impl Aggregator<32, 16> for Prio2 {
         }
 
         Ok(agg_share)
-    }
-
-    #[cfg(feature = "experimental")]
-    fn add_noise_to_agg_share<D: Dist>(
-        &self,
-        _agg_param: &Self::AggregationParam,
-        _agg_share: &mut Self::AggregateShare,
-        _dist: &D,
-        _num_measurements: usize,
-    ) -> Result<(), VdafError> {
-        Ok(())
     }
 }
 
