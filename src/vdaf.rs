@@ -6,7 +6,7 @@
 //! [draft-irtf-cfrg-vdaf-05]: https://datatracker.ietf.org/doc/draft-irtf-cfrg-vdaf/05/
 
 #[cfg(feature = "experimental")]
-use crate::dp::Distribution;
+use crate::dp::DifferentialPrivacyBudget;
 #[cfg(all(feature = "crypto-dependencies", feature = "experimental"))]
 use crate::idpf::IdpfError;
 use crate::{
@@ -252,21 +252,20 @@ pub trait Aggregator<const VERIFY_KEY_SIZE: usize, const NONCE_SIZE: usize>: Vda
     ) -> Result<Self::AggregateShare, VdafError>;
 }
 
-/// Aggregator that implements differential privacy with aggregator-side noise addition
+/// Aggregator that implements differential privacy with aggregator-side noise addition.
 #[cfg(feature = "experimental")]
-pub trait AggregatorWithNoise<const VERIFY_KEY_SIZE: usize, const NONCE_SIZE: usize>:
+pub trait AggregatorWithNoise<const VERIFY_KEY_SIZE: usize, const NONCE_SIZE: usize, DPBudget>:
     Aggregator<VERIFY_KEY_SIZE, NONCE_SIZE>
+where
+    DPBudget: DifferentialPrivacyBudget,
 {
-    /// Adds noise to an aggregate share to achieve differential privacy.
-    /// The `dist` distribution contains the relevant DP parameters.
-    /// The noise is drawn from `dist` and then scaled by the right
-    /// sensitivity (which can depend on `num_measurements` and the type of VDAF)
-    /// in order to enforce the desired privacy level.
-    fn add_noise_to_agg_share<D: Distribution>(
+    /// Adds noise to an aggregate share such that the aggregate result
+    /// is `DPBudget`-differentially private as long as one Aggregator is honest.
+    fn add_noise_to_agg_share(
         &self,
+        budget: &DPBudget,
         agg_param: &Self::AggregationParam,
         agg_share: &mut Self::AggregateShare,
-        dist: &D,
         num_measurements: usize,
     ) -> Result<(), VdafError>;
 }
