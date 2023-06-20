@@ -21,6 +21,7 @@ use std::{
     convert::{TryFrom, TryInto},
     io::Cursor,
 };
+
 /// The Prio2 VDAF. It supports the same measurement type as
 /// [`Prio3SumVec`](crate::vdaf::prio3::Prio3SumVec) with `bits == 1` but uses the proof system and
 /// finite field deployed in ENPA.

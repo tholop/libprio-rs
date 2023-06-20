@@ -55,6 +55,7 @@ use std::fmt::Debug;
 use std::io::Cursor;
 use std::iter::{self, IntoIterator};
 use std::marker::PhantomData;
+
 const DST_MEASUREMENT_SHARE: u16 = 1;
 const DST_PROOF_SHARE: u16 = 2;
 const DST_JOINT_RANDOMNESS: u16 = 3;
