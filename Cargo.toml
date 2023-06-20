@@ -37,9 +37,6 @@ rayon = { version = "1.7.0", optional = true }
 aes-gcm = { version = "^0.10", optional = true }
 ring = { version = "0.16.20", optional = true }
 
-# dependencies for differential privacy, required if "experimental" is enabled
-num-rational = { version = "0.4.1", optional = true }
-
 [dev-dependencies]
 assert_matches = "1.5.0"
 criterion = "0.5"
@@ -60,7 +57,7 @@ hex-literal = "0.4.1"
 
 [features]
 default = ["crypto-dependencies"]
-experimental = ["bitvec", "fiat-crypto", "fixed", "num-rational"]
+experimental = ["bitvec", "fiat-crypto", "fixed"]
 test-util = ["rand", "serde_json"]
 multithreaded = ["rayon"]
 prio2 = ["crypto-dependencies", "aes-gcm", "ring"]
