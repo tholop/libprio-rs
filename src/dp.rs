@@ -1,8 +1,7 @@
 // SPDX-License-Identifier: MPL-2.0
 
 //! Differential privacy (DP) primitives.
-use crate::field::FieldElement;
-use crate::vdaf::prg::SeedStream;
+use rand::distributions::Distribution;
 use std::fmt::Debug;
 
 /// Positive rational number to represent DP and noise distribution parameters in protocol messages
@@ -36,6 +35,15 @@ impl ZeroConcentratedDifferentialPrivacyBudget {
     pub fn new(epsilon: Rational) -> Self {
         Self { epsilon }
     }
+}
+
+/// Distribution over `T` that can be instantiated from a given privacy budget
+pub trait DifferentialPrivacyDistribution<DPBudget: DifferentialPrivacyBudget, T>:
+    Distribution<T>
+{
+    /// Creates a new distribution over `T` such that the additive noising mechanism is
+    /// `privacy_budget`-DP when applied to a function with sensitivity `sensitivity`.
+    fn from(privacy_budget: &DPBudget, sensitivity: Rational) -> Self;
 }
 
 /// Zero-mean Discrete Gaussian noise distribution.

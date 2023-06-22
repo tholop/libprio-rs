@@ -6,7 +6,7 @@
 //! [draft-irtf-cfrg-vdaf-06]: https://datatracker.ietf.org/doc/draft-irtf-cfrg-vdaf/06/
 
 #[cfg(feature = "experimental")]
-use crate::dp::DifferentialPrivacyBudget;
+use crate::dp::{DifferentialPrivacyBudget, DifferentialPrivacyDistribution};
 #[cfg(all(feature = "crypto-dependencies", feature = "experimental"))]
 use crate::idpf::IdpfError;
 use crate::{
@@ -254,10 +254,15 @@ pub trait Aggregator<const VERIFY_KEY_SIZE: usize, const NONCE_SIZE: usize>: Vda
 
 /// Aggregator that implements differential privacy with Aggregator-side noise addition.
 #[cfg(feature = "experimental")]
-pub trait AggregatorWithNoise<const VERIFY_KEY_SIZE: usize, const NONCE_SIZE: usize, DPBudget>:
-    Aggregator<VERIFY_KEY_SIZE, NONCE_SIZE>
-where
+pub trait AggregatorWithNoise<
+    const VERIFY_KEY_SIZE: usize,
+    const NONCE_SIZE: usize,
+    DPBudget,
+    DPDistribution,
+    T,
+>: Aggregator<VERIFY_KEY_SIZE, NONCE_SIZE> where
     DPBudget: DifferentialPrivacyBudget,
+    DPDistribution: DifferentialPrivacyDistribution<DPBudget, T>,
 {
     /// Adds noise to an aggregate share such that the aggregate result
     /// is `DPBudget`-differentially private as long as one Aggregator is honest.
