@@ -57,7 +57,7 @@ hex-literal = "0.4.1"
 
 [features]
 default = ["crypto-dependencies"]
-experimental = ["bitvec", "fiat-crypto", "fixed", "rand"]
+experimental = ["bitvec", "fiat-crypto", "fixed"]
 test-util = ["rand", "serde_json"]
 multithreaded = ["rayon"]
 prio2 = ["crypto-dependencies", "aes-gcm", "ring"]
