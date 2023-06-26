@@ -76,7 +76,7 @@ impl ZCdpDiscreteGaussian {
     ///
     /// [CKS20]: https://arxiv.org/pdf/2004.00010.pdf
     pub fn create_distribution(
-        budget: ZeroConcentratedDifferentialPrivacyBudget,
+        budget: &ZeroConcentratedDifferentialPrivacyBudget,
         sensitivity: Rational,
     ) -> DiscreteGaussian {
         let sigma = Rational {
