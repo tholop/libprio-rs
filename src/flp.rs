@@ -829,6 +829,7 @@ mod tests {
         type Measurement = F::Integer;
         type AggregateResult = F::Integer;
         type Field = F;
+        type DifferentialPrivacyParam = ();
 
         fn valid(
             &self,
@@ -964,6 +965,7 @@ mod tests {
         type Measurement = F::Integer;
         type AggregateResult = F::Integer;
         type Field = F;
+        type DifferentialPrivacyParam = ();
 
         fn valid(
             &self,

@@ -782,7 +782,7 @@ mod tests {
             .truncate(vsum.encode_measurement(&fp_vec).unwrap())
             .unwrap();
         let _ = &vsum
-            .add_differential_privacy_noise(&mut v, &(100, 3))
+            .add_differential_privacy_noise(&mut v, &(100u8.into(), 3u8.into()))
             .unwrap();
         assert_ne!(
             vsum.decode_result(&v, 1).unwrap(),

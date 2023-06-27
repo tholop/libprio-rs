@@ -202,6 +202,7 @@ impl Aggregator<32, 16> for Prio2 {
     type PrepareState = Prio2PrepareState;
     type PrepareShare = Prio2PrepareShare;
     type PrepareMessage = ();
+    type DifferentialPrivacyParam = ();
 
     fn prepare_init(
         &self,
