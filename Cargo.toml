@@ -27,11 +27,11 @@ subtle = "2.5.0"
 thiserror = "1.0"
 
 # dependencies required if feature "experimental" is enabled
-num-bigint = { version = "0.4.3", optional = true }
+num-bigint = { version = "0.4.3", optional = true, features = ["rand"] }
 num-traits = { version = "0.2.15", optional = true }
 
 # dependencies required if feature "test-util" is enabled
-rand = { version = "0.8", optional = true }
+rand = { version = "0.8" , optional = true}
 serde_json = { version = "1.0", optional = true }
 
 # dependencies required if feature "multithreaded" is enabled
@@ -61,7 +61,7 @@ hex-literal = "0.4.1"
 
 [features]
 default = ["crypto-dependencies"]
-experimental = ["bitvec", "fiat-crypto", "fixed", "num-bigint", "num-traits"]
+experimental = ["bitvec", "fiat-crypto", "fixed", "num-bigint", "num-traits", "rand"]
 test-util = ["rand", "serde_json"]
 multithreaded = ["rayon"]
 prio2 = ["crypto-dependencies", "aes-gcm", "ring"]

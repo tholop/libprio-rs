@@ -177,16 +177,15 @@ pub mod noise;
 use crate::field::{Field128, FieldElement, FieldElementExt, FieldElementWithInteger};
 use crate::flp::gadgets::{BlindPolyEval, ParallelSumGadget, PolyEval};
 use crate::flp::types::fixedpoint_l2::compatible_float::CompatibleFloat;
-use crate::flp::types::fixedpoint_l2::noise::sample_discrete_gaussian;
+use crate::flp::types::fixedpoint_l2::noise::DiscreteGaussian;
 use crate::flp::{FlpError, Gadget, Type};
 use crate::polynomial::poly_range_check;
 use fixed::traits::Fixed;
 use num_bigint::{BigInt, BigUint, TryFromBigIntError};
+use rand::distributions::Distribution;
 use std::ops::Neg;
 
 use std::{convert::TryFrom, convert::TryInto, fmt::Debug, marker::PhantomData};
-
-use self::noise::compute_standard_deviation;
 
 /// The privacy parameter which is passed to `FixedPointBoundedL2VecSum` has this type.
 pub type PrivacyParameterType = (BigUint, BigUint);
@@ -593,12 +592,12 @@ where
             // for this we compute its modulo wrt the field modulus, then get
             // the i128 value, which we put into the field.
 
-            // 0. compute noise standard deviation
-            let (ref n, ref d) = compute_standard_deviation(dp_param, self.bits_per_entry);
+            // 0. compute sensitivity of aggregation, namely 2^n
+            let sensitivity = BigUint::from(2u128).pow(self.bits_per_entry as u32);
 
             // 1. get noise
-            let noise: BigInt = sample_discrete_gaussian(n, d)
-                .map_err(|e| FlpError::DifferentialPrivacyNoise(e))?;
+            let sampler = DiscreteGaussian::zcdp_from_sensitivity(dp_param, sensitivity);
+            let noise: BigInt = sampler.sample(&mut rand::rngs::OsRng);
 
             // 2. noise as i128
             let noise: BigInt = noise % BigInt::from(Field128::modulus());
