@@ -236,11 +236,45 @@ impl Distribution<BigInt> for DiscreteGaussian {
     }
 }
 
-/*
 #[cfg(test)]
 mod tests {
-    use super::*;
+    use crate::vdaf::prg::{Seed, SeedStreamSha3};
 
+    use super::*;
+    use num_bigint::BigUint;
+    use rand::SeedableRng;
+
+    #[test]
+    fn test_discrete_gaussian() {
+        let sampler = DiscreteGaussian {
+            std: (BigUint::from(5u8), BigUint::one()),
+        };
+
+        // check samples are consistent
+        let mut rng = SeedStreamSha3::from_seed(Seed::from_bytes([0u8; 16]));
+        let samples: Vec<i8> = (0..10)
+            .map(|_| i8::try_from(sampler.sample(&mut rng)).unwrap())
+            .collect();
+        let samples1: Vec<i8> = (0..10)
+            .map(|_| i8::try_from(sampler.sample(&mut rng)).unwrap())
+            .collect();
+        assert_eq!(samples, vec!(5, 1, -8, -12, 7, -13, -2, 1, -2, -1));
+        assert_eq!(samples1, vec!(0, -1, -1, 8, -9, -1, 0, -4, 5, 2));
+
+        // test zcdp constructor
+        let sampler1 = DiscreteGaussian::zcdp_from_sensitivity(
+            &(BigUint::one(), BigUint::from(5u8)),
+            BigUint::one(),
+        );
+        let mut rng1 = SeedStreamSha3::from_seed(Seed::from_bytes([0u8; 16]));
+        let samples2: Vec<i8> = (0..10)
+            .map(|_| i8::try_from(sampler1.sample(&mut rng1)).unwrap())
+            .collect();
+        assert_eq!(samples2, samples);
+    }
+}
+
+/*
     use num_bigint::ToBigUint;
     use statest::ks::*;
     use statrs::{

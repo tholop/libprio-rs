@@ -50,6 +50,8 @@ use crate::vdaf::{
 };
 #[cfg(feature = "experimental")]
 use fixed::traits::Fixed;
+#[cfg(feature = "experimental")]
+use rand::Rng;
 use std::convert::TryFrom;
 use std::fmt::Debug;
 use std::io::Cursor;
@@ -1147,14 +1149,18 @@ where
 
     #[cfg(feature = "experimental")]
     /// Add noise for this prio3 type to obtain differential privacy.
-    fn apply_differential_privacy_noise(
+    fn apply_differential_privacy_noise<R>(
         &self,
         dp_param: &Self::DifferentialPrivacyParam,
         agg_share: &mut Self::AggregateShare,
-    ) -> Result<(), VdafError> {
+        rng: &mut R,
+    ) -> Result<(), VdafError>
+    where
+        R: Rng,
+    {
         let len_before = agg_share.0.len();
         self.typ
-            .add_differential_privacy_noise(&mut agg_share.0, dp_param)?;
+            .add_differential_privacy_noise(&mut agg_share.0, dp_param, rng)?;
         if len_before != agg_share.0.len() {
             return Err(VdafError::Uncategorized(
                 "add_noise changed length of aggregate share.".to_string(),

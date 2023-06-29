@@ -183,6 +183,7 @@ use crate::polynomial::poly_range_check;
 use fixed::traits::Fixed;
 use num_bigint::{BigInt, BigUint, TryFromBigIntError};
 use rand::distributions::Distribution;
+use rand::Rng;
 use std::ops::Neg;
 
 use std::{convert::TryFrom, convert::TryInto, fmt::Debug, marker::PhantomData};
@@ -581,11 +582,15 @@ where
         Ok(decoded_vector)
     }
 
-    fn add_differential_privacy_noise(
+    fn add_differential_privacy_noise<R>(
         &self,
         aggregate_share: &mut [Field128],
         dp_param: &PrivacyParameterType,
-    ) -> Result<(), FlpError> {
+        rng: &mut R,
+    ) -> Result<(), FlpError>
+    where
+        R: Rng,
+    {
         // generate and add discrete gaussian noise for each entry
         for entry in aggregate_share.iter_mut() {
             // we get the noise as bigint, so we have to convert it to i128,
@@ -597,13 +602,18 @@ where
 
             // 1. get noise
             let sampler = DiscreteGaussian::zcdp_from_sensitivity(dp_param, sensitivity);
-            let noise: BigInt = sampler.sample(&mut rand::rngs::OsRng);
+            let noise: BigInt = sampler.sample(rng);
 
             // 2. noise as i128
             let noise: BigInt = noise % BigInt::from(Field128::modulus());
             let noise: i128 = noise.try_into().map_err(|e: TryFromBigIntError<BigInt>| {
                 FlpError::DifferentialPrivacyNoise(Box::new(e))
             })?;
+            println!(
+                "{:?} sens {:?}",
+                noise,
+                BigUint::from(2u128).pow(self.bits_per_entry as u32)
+            );
 
             // Compute the field element corresponding to the i128 value.
             //
@@ -704,9 +714,11 @@ mod tests {
     use crate::field::{random_vector, Field128, FieldElement};
     use crate::flp::gadgets::ParallelSum;
     use crate::flp::types::test_utils::{flp_validity_test, ValidityTestCase};
+    use crate::vdaf::prg::{Seed, SeedStreamSha3};
     use fixed::types::extra::{U127, U14, U63};
     use fixed::{FixedI128, FixedI16, FixedI64};
     use fixed_macro::fixed;
+    use rand::SeedableRng;
 
     #[test]
     fn test_bounded_fpvec_sum_parallel_fp16() {
@@ -776,16 +788,30 @@ mod tests {
             vec!(0.25, 0.125, 0.0625)
         );
 
-        // Noise (we only test that the noised vector is not the same as the original)
+        // Noise
         let mut v = vsum
             .truncate(vsum.encode_measurement(&fp_vec).unwrap())
             .unwrap();
         let _ = &vsum
-            .add_differential_privacy_noise(&mut v, &(100u8.into(), 3u8.into()))
+            .add_differential_privacy_noise(
+                &mut v,
+                &(100u8.into(), 3u8.into()),
+                &mut SeedStreamSha3::from_seed(Seed::from_bytes([0u8; 16])),
+            )
             .unwrap();
-        assert_ne!(
+        assert_eq!(
             vsum.decode_result(&v, 1).unwrap(),
-            vec!(0.25, 0.125, 0.0625)
+            match n {
+                // sensitivity depends on encoding so the noise differs
+                16 => vec!(0.261322021484375, 0.1610107421875, 0.052093505859375),
+                32 => vec!(
+                    0.29110000981017947,
+                    0.08728257426992059,
+                    0.12602647300809622
+                ),
+                64 => vec!(0.3750092173741707, 0.19153540551433396, 0.09941997064727037),
+                _ => panic!("unsupported bitsize"),
+            }
         );
 
         // encoded norm does not match computed norm

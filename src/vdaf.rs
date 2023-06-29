@@ -16,6 +16,8 @@ use crate::{
     prng::PrngError,
     vdaf::prg::Seed,
 };
+#[cfg(feature = "experimental")]
+use rand::Rng;
 use serde::{Deserialize, Serialize};
 use std::{fmt::Debug, io::Cursor};
 
@@ -212,6 +214,7 @@ pub trait Aggregator<const VERIFY_KEY_SIZE: usize, const NONCE_SIZE: usize>: Vda
     /// associated with any aggregator involved in the execution of the VDAF.
     type PrepareMessage: Clone + Debug + ParameterizedDecode<Self::PrepareState> + Encode;
 
+    #[cfg(feature = "experimental")]
     /// The type of the differential privacy parameter used for configuring the noise applied in the
     /// [`Aggregator::apply_differential_privacy_noise`] function.
     type DifferentialPrivacyParam: Clone + Debug;
@@ -261,11 +264,15 @@ pub trait Aggregator<const VERIFY_KEY_SIZE: usize, const NONCE_SIZE: usize>: Vda
     /// The default implementation adds no noise. Otherwise, the VDAF is responsible
     /// for choosing an appropriate [`Self::DifferentialPrivacyParam`], and to apply
     /// noise correctly in the implementation of this function.
-    fn apply_differential_privacy_noise(
+    fn apply_differential_privacy_noise<R>(
         &self,
         _dp_param: &Self::DifferentialPrivacyParam,
         _agg_share: &mut Self::AggregateShare,
-    ) -> Result<(), VdafError> {
+        _r: &mut R,
+    ) -> Result<(), VdafError>
+    where
+        R: Rng,
+    {
         Ok(())
     }
 }

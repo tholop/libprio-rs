@@ -50,6 +50,8 @@ use crate::fft::{discrete_fourier_transform, discrete_fourier_transform_inv_fini
 use crate::field::{FftFriendlyFieldElement, FieldElement, FieldElementWithInteger, FieldError};
 use crate::fp::log2;
 use crate::polynomial::poly_eval;
+#[cfg(feature = "experimental")]
+use rand::Rng;
 use std::any::Any;
 use std::convert::TryFrom;
 use std::fmt::Debug;
@@ -555,11 +557,15 @@ pub trait Type: Sized + Eq + Clone + Debug {
     #[cfg(feature = "experimental")]
     /// Optionally add noise to the aggregate share to obtain differential privacy.
     /// Post-condition: The size of `_aggregate_share` has not changed.
-    fn add_differential_privacy_noise(
+    fn add_differential_privacy_noise<R>(
         &self,
         _aggregate_share: &mut [Self::Field],
         _dp_param: &Self::DifferentialPrivacyParam,
-    ) -> Result<(), FlpError> {
+        _rng: &mut R,
+    ) -> Result<(), FlpError>
+    where
+        R: Rng,
+    {
         Ok(())
     }
 }

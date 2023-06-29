@@ -19,6 +19,8 @@ use aes::{
 use cmac::{Cmac, Mac};
 #[cfg(feature = "crypto-dependencies")]
 use ctr::Ctr64BE;
+#[cfg(feature = "experimental")]
+use rand_core::{RngCore, SeedableRng};
 use sha3::{
     digest::{ExtendableOutput, Update, XofReader},
     CShake128, CShake128Core, CShake128Reader,
@@ -45,6 +47,20 @@ impl<const SEED_SIZE: usize> Seed<SEED_SIZE> {
 
     pub(crate) fn from_bytes(seed: [u8; SEED_SIZE]) -> Self {
         Self(seed)
+    }
+}
+
+#[cfg(feature = "experimental")]
+impl<const SEED_SIZE: usize> AsMut<[u8]> for Seed<SEED_SIZE> {
+    fn as_mut(&mut self) -> &mut [u8] {
+        self.0.as_mut()
+    }
+}
+
+#[cfg(feature = "experimental")]
+impl<const SEED_SIZE: usize> Default for Seed<SEED_SIZE> {
+    fn default() -> Self {
+        Self::generate().unwrap()
     }
 }
 
@@ -227,6 +243,35 @@ impl SeedStreamSha3 {
 impl SeedStream for SeedStreamSha3 {
     fn fill(&mut self, buf: &mut [u8]) {
         XofReader::read(&mut self.0, buf);
+    }
+}
+
+#[cfg(feature = "experimental")]
+impl RngCore for SeedStreamSha3 {
+    fn fill_bytes(&mut self, dest: &mut [u8]) {
+        self.fill(dest);
+    }
+    fn try_fill_bytes(&mut self, dest: &mut [u8]) -> Result<(), rand::Error> {
+        self.fill_bytes(dest);
+        Ok(())
+    }
+    fn next_u32(&mut self) -> u32 {
+        let mut buf = [0; 4];
+        self.fill_bytes(&mut buf);
+        u32::from_le_bytes(buf)
+    }
+    fn next_u64(&mut self) -> u64 {
+        let mut buf = [0; 8];
+        self.fill_bytes(&mut buf);
+        u64::from_le_bytes(buf)
+    }
+}
+
+#[cfg(feature = "experimental")]
+impl SeedableRng for SeedStreamSha3 {
+    type Seed = Seed<16>;
+    fn from_seed(seed: Self::Seed) -> Self {
+        PrgSha3::init(&seed.0, b"").into_seed_stream()
     }
 }
 
