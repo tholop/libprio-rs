@@ -906,6 +906,7 @@ where
     type PrepareState = Prio3PrepareState<T::Field, SEED_SIZE>;
     type PrepareShare = Prio3PrepareShare<T::Field, SEED_SIZE>;
     type PrepareMessage = Prio3PrepareMessage<SEED_SIZE>;
+    #[cfg(feature = "experimental")]
     type DifferentialPrivacyParam = T::DifferentialPrivacyParam;
 
     /// Begins the Prep process with the other aggregators. The result of this process is
