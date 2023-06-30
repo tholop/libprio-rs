@@ -41,6 +41,7 @@ impl<F: FftFriendlyFieldElement> Type for Count<F> {
     type Measurement = F::Integer;
     type AggregateResult = F::Integer;
     type Field = F;
+    #[cfg(feature = "experimental")]
     type DifferentialPrivacyParam = ();
 
     fn encode_measurement(&self, value: &F::Integer) -> Result<Vec<F>, FlpError> {
@@ -145,6 +146,7 @@ impl<F: FftFriendlyFieldElement> Type for Sum<F> {
     type Measurement = F::Integer;
     type AggregateResult = F::Integer;
     type Field = F;
+    #[cfg(feature = "experimental")]
     type DifferentialPrivacyParam = ();
 
     fn encode_measurement(&self, summand: &F::Integer) -> Result<Vec<F>, FlpError> {
@@ -245,6 +247,7 @@ impl<F: FftFriendlyFieldElement> Type for Average<F> {
     type Measurement = F::Integer;
     type AggregateResult = f64;
     type Field = F;
+    #[cfg(feature = "experimental")]
     type DifferentialPrivacyParam = ();
 
     fn encode_measurement(&self, summand: &F::Integer) -> Result<Vec<F>, FlpError> {
@@ -352,6 +355,7 @@ impl<F: FftFriendlyFieldElement> Type for Histogram<F> {
     type Measurement = usize;
     type AggregateResult = Vec<F::Integer>;
     type Field = F;
+    #[cfg(feature = "experimental")]
     type DifferentialPrivacyParam = ();
 
     fn encode_measurement(&self, measurement: &usize) -> Result<Vec<F>, FlpError> {
@@ -532,6 +536,7 @@ where
     type Measurement = Vec<F::Integer>;
     type AggregateResult = Vec<F::Integer>;
     type Field = F;
+    #[cfg(feature = "experimental")]
     type DifferentialPrivacyParam = ();
 
     fn encode_measurement(&self, measurement: &Vec<F::Integer>) -> Result<Vec<F>, FlpError> {

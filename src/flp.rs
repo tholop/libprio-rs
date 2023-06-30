@@ -133,6 +133,7 @@ pub trait Type: Sized + Eq + Clone + Debug {
     /// The finite field used for this type.
     type Field: FftFriendlyFieldElement;
 
+    #[cfg(feature = "experimental")]
     /// The type of the parameter used for configuring differential privacy for this type.
     type DifferentialPrivacyParam: Clone + Debug;
 
@@ -835,6 +836,7 @@ mod tests {
         type Measurement = F::Integer;
         type AggregateResult = F::Integer;
         type Field = F;
+        #[cfg(feature = "experimental")]
         type DifferentialPrivacyParam = ();
 
         fn valid(
@@ -971,6 +973,7 @@ mod tests {
         type Measurement = F::Integer;
         type AggregateResult = F::Integer;
         type Field = F;
+        #[cfg(feature = "experimental")]
         type DifferentialPrivacyParam = ();
 
         fn valid(
