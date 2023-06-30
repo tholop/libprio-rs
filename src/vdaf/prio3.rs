@@ -1262,7 +1262,6 @@ mod tests {
     use super::*;
     #[cfg(feature = "experimental")]
     use crate::flp::gadgets::ParallelSumGadget;
-    #[cfg(feature = "experimental")]
     use crate::vdaf::{fieldvec_roundtrip_test, run_vdaf, run_vdaf_prepare};
     use assert_matches::assert_matches;
     #[cfg(feature = "experimental")]
