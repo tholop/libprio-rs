@@ -18,7 +18,6 @@ cmac = { version = "0.7.2", optional = true }
 base64 = "0.21.2"
 byteorder = "1.4.3"
 fiat-crypto = { version = "0.1.20", optional = true }
-fixed = { version = "1.23", optional = true }
 getrandom = { version = "0.2.10", features = ["std"] }
 serde = { version = "1.0", features = ["derive"] }
 sha3 = "0.10.8"
@@ -27,7 +26,9 @@ subtle = "2.5.0"
 thiserror = "1.0"
 
 # dependencies required if feature "experimental" is enabled
+fixed = { version = "1.23", optional = true }
 num-bigint = { version = "0.4.3", optional = true, features = ["rand"] }
+num-rational = { version = "0.4.1", optional = true }
 num-traits = { version = "0.2.15", optional = true }
 rand_core = { version = "0.6.4", optional = true }
 
@@ -49,7 +50,6 @@ fixed-macro = "1.2.0"
 iai = "0.1"
 itertools = "0.11.0"
 modinverse = "0.1.0"
-num-bigint = "0.4.3"
 serde_json = "1.0"
 hex = { version = "0.4.3", features = ["serde"] }
 # Enable test_vector module for test targets
@@ -62,8 +62,8 @@ hex-literal = "0.4.1"
 
 [features]
 default = ["crypto-dependencies"]
-experimental = ["bitvec", "fiat-crypto", "fixed", "num-bigint", "num-traits", "rand", "rand_core"]
-test-util = ["rand", "serde_json"]
+experimental = ["bitvec", "fiat-crypto", "fixed", "rand", "rand_core", "num-bigint", "num-rational", "num-traits"]
+test-util = ["rand", "serde_json", "num-bigint"]
 multithreaded = ["rayon"]
 prio2 = ["crypto-dependencies", "aes-gcm", "ring"]
 crypto-dependencies = ["aes", "ctr", "cmac"]

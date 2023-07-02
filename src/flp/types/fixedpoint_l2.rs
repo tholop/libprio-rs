@@ -172,29 +172,27 @@
 //!
 
 pub mod compatible_float;
-pub mod noise;
 
+use crate::dp::{BigURational, ZCdpDiscreteGaussian, ZeroConcentratedDifferentialPrivacyBudget};
 use crate::field::{Field128, FieldElement, FieldElementExt, FieldElementWithInteger};
 use crate::flp::gadgets::{BlindPolyEval, ParallelSumGadget, PolyEval};
 use crate::flp::types::fixedpoint_l2::compatible_float::CompatibleFloat;
-use crate::flp::types::fixedpoint_l2::noise::DiscreteGaussian;
 use crate::flp::{FlpError, Gadget, Type};
 use crate::polynomial::poly_range_check;
 use fixed::traits::Fixed;
 use num_bigint::{BigInt, BigUint, TryFromBigIntError};
-use rand::distributions::Distribution;
-use rand::Rng;
+use rand::{distributions::Distribution, Rng};
 use std::ops::Neg;
 
 use std::{convert::TryFrom, convert::TryInto, fmt::Debug, marker::PhantomData};
 
 /// The privacy parameter which is passed to `FixedPointBoundedL2VecSum` has this type.
-pub type PrivacyParameterType = (BigUint, BigUint);
+pub type PrivacyParameterType = BigURational;
 
 /// If no noise should be added during aggregation, use the value returned by this function as
 /// privacy parameter.
 pub fn zero_privacy_parameter() -> PrivacyParameterType {
-    (1u8.into(), 0u8.into())
+    PrivacyParameterType::new(1u8.into(), 0u8.into())
 }
 
 /// The fixed point vector sum data type. Each measurement is a vector of fixed point numbers of
@@ -592,28 +590,29 @@ where
         R: Rng,
     {
         // generate and add discrete gaussian noise for each entry
+
+        // 0. compute sensitivity of aggregation, namely 2^n
+        let sensitivity = BigUint::from(2u128).pow(self.bits_per_entry as u32);
+
+        // 1. initialize sampler
+        let zcdp = ZCdpDiscreteGaussian {
+            budget: ZeroConcentratedDifferentialPrivacyBudget {
+                epsilon: dp_param.clone(),
+            },
+        };
+        let sampler = zcdp.create_distribution(BigURational::from_integer(sensitivity));
+
         for entry in aggregate_share.iter_mut() {
             // we get the noise as bigint, so we have to convert it to i128,
             // for this we compute its modulo wrt the field modulus, then get
             // the i128 value, which we put into the field.
 
-            // 0. compute sensitivity of aggregation, namely 2^n
-            let sensitivity = BigUint::from(2u128).pow(self.bits_per_entry as u32);
-
-            // 1. get noise
-            let sampler = DiscreteGaussian::zcdp_from_sensitivity(dp_param, sensitivity);
-            let noise: BigInt = sampler.sample(rng);
-
             // 2. noise as i128
+            let noise: BigInt = sampler.sample(rng);
             let noise: BigInt = noise % BigInt::from(Field128::modulus());
             let noise: i128 = noise.try_into().map_err(|e: TryFromBigIntError<BigInt>| {
                 FlpError::DifferentialPrivacyNoise(Box::new(e))
             })?;
-            println!(
-                "{:?} sens {:?}",
-                noise,
-                BigUint::from(2u128).pow(self.bits_per_entry as u32)
-            );
 
             // Compute the field element corresponding to the i128 value.
             //
@@ -795,7 +794,7 @@ mod tests {
         let _ = &vsum
             .add_differential_privacy_noise(
                 &mut v,
-                &(100u8.into(), 3u8.into()),
+                &BigURational::new(100u8.into(), 3u8.into()),
                 &mut SeedStreamSha3::from_seed(Seed::from_bytes([0u8; 16])),
             )
             .unwrap();
@@ -803,13 +802,13 @@ mod tests {
             vsum.decode_result(&v, 1).unwrap(),
             match n {
                 // sensitivity depends on encoding so the noise differs
-                16 => vec!(0.261322021484375, 0.1610107421875, 0.052093505859375),
+                16 => vec!(0.118621826171875, 0.113861083984375, 0.005645751953125),
                 32 => vec!(
-                    0.29110000981017947,
-                    0.08728257426992059,
-                    0.12602647300809622
+                    0.2806609869003296,
+                    0.007706268224865198,
+                    0.15726823033764958
                 ),
-                64 => vec!(0.3750092173741707, 0.19153540551433396, 0.09941997064727037),
+                64 => vec!(0.1849907826258293, 0.13799942207634178, 0.12495066949974035),
                 _ => panic!("unsupported bitsize"),
             }
         );
