@@ -27,8 +27,10 @@
 //! [DPRS23]: https://ia.cr/2023/130
 //! [draft-irtf-cfrg-vdaf-06]: https://datatracker.ietf.org/doc/draft-irtf-cfrg-vdaf/06/
 
+use super::AggregatorWithNoise;
 use super::prg::PrgSha3;
 use crate::codec::{CodecError, Decode, Encode, ParameterizedDecode};
+use crate::dp::DifferentialPrivacyStrategy;
 use crate::field::{decode_fieldvec, FftFriendlyFieldElement, FieldElement};
 use crate::field::{Field128, Field64};
 #[cfg(feature = "multithreaded")]
@@ -41,7 +43,7 @@ use crate::flp::types::fixedpoint_l2::{
     compatible_float::CompatibleFloat, FixedPointBoundedL2VecSum,
 };
 use crate::flp::types::{Average, Count, Histogram, Sum, SumVec};
-use crate::flp::Type;
+use crate::flp::{Type, TypeWithNoise};
 use crate::prng::Prng;
 use crate::vdaf::prg::{Prg, Seed};
 use crate::vdaf::{
@@ -906,8 +908,6 @@ where
     type PrepareState = Prio3PrepareState<T::Field, SEED_SIZE>;
     type PrepareShare = Prio3PrepareShare<T::Field, SEED_SIZE>;
     type PrepareMessage = Prio3PrepareMessage<SEED_SIZE>;
-    #[cfg(feature = "experimental")]
-    type DifferentialPrivacyParam = T::DifferentialPrivacyParam;
 
     /// Begins the Prep process with the other aggregators. The result of this process is
     /// the aggregator's output share.
@@ -1147,29 +1147,60 @@ where
 
         Ok(agg_share)
     }
+}
 
-    #[cfg(feature = "experimental")]
-    /// Add noise for this prio3 type to obtain differential privacy.
-    fn apply_differential_privacy_noise<R>(
+
+impl<T, P, S, const SEED_SIZE: usize> AggregatorWithNoise<SEED_SIZE, 16, S> for Prio3<T, P, SEED_SIZE>
+where
+    T: TypeWithNoise<S>,
+    P: Prg<SEED_SIZE>,
+    S: DifferentialPrivacyStrategy,
+{
+    fn add_noise_to_agg_share(
         &self,
-        dp_param: &Self::DifferentialPrivacyParam,
+        dp_strategy: &S,
+        agg_param: &Self::AggregationParam,
         agg_share: &mut Self::AggregateShare,
-        rng: &mut R,
-    ) -> Result<(), VdafError>
-    where
-        R: Rng,
-    {
-        let len_before = agg_share.0.len();
-        self.typ
-            .add_differential_privacy_noise(&mut agg_share.0, dp_param, rng)?;
-        if len_before != agg_share.0.len() {
-            return Err(VdafError::Uncategorized(
-                "add_noise changed length of aggregate share.".to_string(),
-            ));
-        }
-        Ok(())
+        num_measurements: usize,
+    ) -> Result<(), VdafError> {
+        todo!()
+        // let rng = P::init(&[0u8; SEED_SIZE], todo!());
+        // let len_before = agg_share.0.len();
+        // self.typ
+        //     .add_noise_to_agg_share(&mut agg_share.0, agg_param, &mut rng)?;
+        // if len_before != agg_share.0.len() {
+        //     return Err(VdafError::Uncategorized(
+        //         "add_noise changed length of aggregate share.".to_string(),
+        //     ));
+        // }
+        // Ok(())
     }
 }
+
+
+// #[cfg(feature = "experimental")]
+// /// Add noise for this prio3 type to obtain differential privacy.
+// fn apply_differential_privacy_noise<R>(
+//     &self,
+//     dp_param: &Self::DifferentialPrivacyParam,
+//     agg_share: &mut Self::AggregateShare,
+//     rng: &mut R,
+// ) -> Result<(), VdafError>
+// where
+//     R: Rng,
+// {
+//     let len_before = agg_share.0.len();
+//     self.typ
+//         .add_differential_privacy_noise(&mut agg_share.0, dp_param, rng)?;
+//     if len_before != agg_share.0.len() {
+//         return Err(VdafError::Uncategorized(
+//             "add_noise changed length of aggregate share.".to_string(),
+//         ));
+//     }
+//     Ok(())
+// }
+
+
 
 impl<T, P, const SEED_SIZE: usize> Collector for Prio3<T, P, SEED_SIZE>
 where

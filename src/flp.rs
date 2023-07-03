@@ -46,6 +46,7 @@
 //!
 //! [draft-irtf-cfrg-vdaf-06]: https://datatracker.ietf.org/doc/draft-irtf-cfrg-vdaf/05/
 
+use crate::dp::DifferentialPrivacyStrategy;
 use crate::fft::{discrete_fourier_transform, discrete_fourier_transform_inv_finish, FftError};
 use crate::field::{FftFriendlyFieldElement, FieldElement, FieldElementWithInteger, FieldError};
 use crate::fp::log2;
@@ -132,10 +133,6 @@ pub trait Type: Sized + Eq + Clone + Debug {
 
     /// The finite field used for this type.
     type Field: FftFriendlyFieldElement;
-
-    #[cfg(feature = "experimental")]
-    /// The type of the parameter used for configuring differential privacy for this type.
-    type DifferentialPrivacyParam: Clone + Debug;
 
     /// Encodes a measurement as a vector of [`Self::input_len`] field elements.
     fn encode_measurement(
@@ -555,20 +552,20 @@ pub trait Type: Sized + Eq + Clone + Debug {
         Ok(())
     }
 
-    #[cfg(feature = "experimental")]
+}
+
+pub trait TypeWithNoise<S>: Type
+where
+    S: DifferentialPrivacyStrategy
+{
     /// Optionally add noise to the aggregate share to obtain differential privacy.
     /// Post-condition: The size of `_aggregate_share` has not changed.
-    fn add_differential_privacy_noise<R>(
+    fn add_noise_to_agg_share<R: Rng>(
         &self,
         _aggregate_share: &mut [Self::Field],
-        _dp_param: &Self::DifferentialPrivacyParam,
+        _dp_param: &S,
         _rng: &mut R,
-    ) -> Result<(), FlpError>
-    where
-        R: Rng,
-    {
-        Ok(())
-    }
+    ) -> Result<(), FlpError>;
 }
 
 /// A gadget, a non-affine arithmetic circuit that is called when evaluating a validity circuit.
