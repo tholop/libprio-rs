@@ -177,7 +177,7 @@ use crate::dp::{BigURational, ZCdpDiscreteGaussian, ZeroConcentratedDifferential
 use crate::field::{Field128, FieldElement, FieldElementExt, FieldElementWithInteger};
 use crate::flp::gadgets::{BlindPolyEval, ParallelSumGadget, PolyEval};
 use crate::flp::types::fixedpoint_l2::compatible_float::CompatibleFloat;
-use crate::flp::{FlpError, Gadget, Type};
+use crate::flp::{FlpError, Gadget, Type, TypeWithNoise};
 use crate::polynomial::poly_range_check;
 use fixed::traits::Fixed;
 use num_bigint::{BigInt, BigUint, TryFromBigIntError};
@@ -369,7 +369,6 @@ where
     type Measurement = Vec<T>;
     type AggregateResult = Vec<f64>;
     type Field = Field128;
-    type DifferentialPrivacyParam = PrivacyParameterType;
 
     fn encode_measurement(&self, fp_entries: &Vec<T>) -> Result<Vec<Field128>, FlpError> {
         if fp_entries.len() != self.entries {
@@ -580,63 +579,6 @@ where
         Ok(decoded_vector)
     }
 
-    fn add_differential_privacy_noise<R>(
-        &self,
-        aggregate_share: &mut [Field128],
-        dp_param: &PrivacyParameterType,
-        rng: &mut R,
-    ) -> Result<(), FlpError>
-    where
-        R: Rng,
-    {
-        // generate and add discrete gaussian noise for each entry
-
-        // 0. compute sensitivity of aggregation, namely 2^n
-        let sensitivity = BigUint::from(2u128).pow(self.bits_per_entry as u32);
-
-        // 1. initialize sampler
-        let zcdp = ZCdpDiscreteGaussian {
-            budget: ZeroConcentratedDifferentialPrivacyBudget {
-                epsilon: dp_param.clone(),
-            },
-        };
-        let sampler = zcdp.create_distribution(BigURational::from_integer(sensitivity));
-
-        for entry in aggregate_share.iter_mut() {
-            // we get the noise as bigint, so we have to convert it to i128,
-            // for this we compute its modulo wrt the field modulus, then get
-            // the i128 value, which we put into the field.
-
-            // 2. noise as i128
-            let noise: BigInt = sampler.sample(rng);
-            let noise: BigInt = noise % BigInt::from(Field128::modulus());
-            let noise: i128 = noise.try_into().map_err(|e: TryFromBigIntError<BigInt>| {
-                FlpError::DifferentialPrivacyNoise(Box::new(e))
-            })?;
-
-            // Compute the field element corresponding to the i128 value.
-            //
-            // For this we compute the absolute value of the noise,
-            // put it into the field, and then invert that field value
-            // if the original noise has been negative.
-            //
-            // We do this because the negative values in `F` are actually
-            // encoded by positive, "wrapped-around" values in `F::Integer`.
-            let pos_noise: u128 = noise.abs_diff(0);
-            let f_pos_noise = Field128::from(Field128::valid_integer_try_from::<u128>(pos_noise)?);
-            let f_noise: Field128 = if noise < 0 {
-                f_pos_noise.neg()
-            } else {
-                f_pos_noise
-            };
-
-            // apply generated noise to each entry of the aggregate share.
-            *entry += f_noise;
-        }
-
-        Ok(())
-    }
-
     fn input_len(&self) -> usize {
         self.bits_per_entry * self.entries + self.bits_for_norm
     }
@@ -674,6 +616,66 @@ where
         2
     }
 }
+
+impl<T, SPoly, SBlindPoly> TypeWithNoise<ZCdpDiscreteGaussian> for FixedPointBoundedL2VecSum<T, SPoly, SBlindPoly>
+where
+    T: Fixed + CompatibleFloat,
+    SPoly: ParallelSumGadget<Field128, PolyEval<Field128>> + Eq + Clone + 'static,
+    SBlindPoly: ParallelSumGadget<Field128, BlindPolyEval<Field128>> + Eq + Clone + 'static,
+{
+    fn add_noise_to_agg_share<R: Rng>(
+        &self,
+        dp_strategy: &ZCdpDiscreteGaussian,
+        agg_share: &mut [Self::Field],
+        _num_measurements: usize,
+        rng: &mut R,
+    ) -> Result<(), FlpError> {
+        // generate and add discrete gaussian noise for each entry
+
+        // 0. compute sensitivity of aggregation, namely 2^n
+        let sensitivity = BigUint::from(2u128).pow(self.bits_per_entry as u32);
+
+        // 1. initialize sampler
+        let sampler = dp_strategy.create_distribution(BigURational::from_integer(sensitivity));
+
+        for entry in agg_share.iter_mut() {
+            // we get the noise as bigint, so we have to convert it to i128,
+            // for this we compute its modulo wrt the field modulus, then get
+            // the i128 value, which we put into the field.
+
+            // 2. noise as i128
+            let noise: BigInt = sampler.sample(rng);
+            let noise: BigInt = noise % BigInt::from(Field128::modulus());
+            let noise: i128 = noise.try_into().map_err(|e: TryFromBigIntError<BigInt>| {
+                FlpError::DifferentialPrivacyNoise(Box::new(e))
+            })?;
+
+            // Compute the field element corresponding to the i128 value.
+            //
+            // For this we compute the absolute value of the noise,
+            // put it into the field, and then invert that field value
+            // if the original noise has been negative.
+            //
+            // We do this because the negative values in `F` are actually
+            // encoded by positive, "wrapped-around" values in `F::Integer`.
+            let pos_noise: u128 = noise.abs_diff(0);
+            let f_pos_noise = Field128::from(Field128::valid_integer_try_from::<u128>(pos_noise)?);
+            let f_noise: Field128 = if noise < 0 {
+                f_pos_noise.neg()
+            } else {
+                f_pos_noise
+            };
+
+            // apply generated noise to each entry of the aggregate share.
+            *entry += f_noise;
+        }
+
+        Ok(())
+    }
+}
+
+
+
 
 /// Compute the square of the L2 norm of a vector of fixed-point numbers encoded as field elements.
 ///

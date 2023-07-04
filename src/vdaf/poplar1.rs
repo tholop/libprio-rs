@@ -855,8 +855,6 @@ impl<P: Prg<SEED_SIZE>, const SEED_SIZE: usize> Aggregator<SEED_SIZE, 16>
     type PrepareState = Poplar1PrepareState;
     type PrepareShare = Poplar1FieldVec;
     type PrepareMessage = Poplar1PrepareMessage;
-    #[cfg(feature = "experimental")]
-    type DifferentialPrivacyParam = ();
 
     #[allow(clippy::type_complexity)]
     fn prepare_init(

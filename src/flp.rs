@@ -562,8 +562,9 @@ where
     /// Post-condition: The size of `_aggregate_share` has not changed.
     fn add_noise_to_agg_share<R: Rng>(
         &self,
-        _aggregate_share: &mut [Self::Field],
-        _dp_param: &S,
+        _dp_strategy: &S,
+        _agg_share: &mut [Self::Field],
+        _num_measurements: usize,
         _rng: &mut R,
     ) -> Result<(), FlpError>;
 }

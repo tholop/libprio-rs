@@ -45,7 +45,7 @@ use crate::flp::types::fixedpoint_l2::{
 use crate::flp::types::{Average, Count, Histogram, Sum, SumVec};
 use crate::flp::{Type, TypeWithNoise};
 use crate::prng::Prng;
-use crate::vdaf::prg::{Prg, Seed};
+use crate::vdaf::prg::{Prg, Seed, SeedStreamSha3};
 use crate::vdaf::{
     Aggregatable, AggregateShare, Aggregator, Client, Collector, OutputShare, PrepareTransition,
     Share, ShareDecodingParameter, Vdaf, VdafError,
@@ -54,6 +54,7 @@ use crate::vdaf::{
 use fixed::traits::Fixed;
 #[cfg(feature = "experimental")]
 use rand::Rng;
+use rand_core::SeedableRng;
 use std::convert::TryFrom;
 use std::fmt::Debug;
 use std::io::Cursor;
@@ -1163,42 +1164,19 @@ where
         agg_share: &mut Self::AggregateShare,
         num_measurements: usize,
     ) -> Result<(), VdafError> {
-        todo!()
-        // let rng = P::init(&[0u8; SEED_SIZE], todo!());
-        // let len_before = agg_share.0.len();
-        // self.typ
-        //     .add_noise_to_agg_share(&mut agg_share.0, agg_param, &mut rng)?;
-        // if len_before != agg_share.0.len() {
-        //     return Err(VdafError::Uncategorized(
-        //         "add_noise changed length of aggregate share.".to_string(),
-        //     ));
-        // }
-        // Ok(())
+        let rng = SeedStreamSha3::from_seed(Seed::from_bytes([0u8; 16]));
+
+        let len_before = agg_share.0.len();
+        self.typ
+            .add_noise_to_agg_share(dp_strategy, &mut agg_share.0, num_measurements, &mut rng)?;
+        if len_before != agg_share.0.len() {
+            return Err(VdafError::Uncategorized(
+                "add_noise changed length of aggregate share.".to_string(),
+            ));
+        }
+        Ok(())
     }
 }
-
-
-// #[cfg(feature = "experimental")]
-// /// Add noise for this prio3 type to obtain differential privacy.
-// fn apply_differential_privacy_noise<R>(
-//     &self,
-//     dp_param: &Self::DifferentialPrivacyParam,
-//     agg_share: &mut Self::AggregateShare,
-//     rng: &mut R,
-// ) -> Result<(), VdafError>
-// where
-//     R: Rng,
-// {
-//     let len_before = agg_share.0.len();
-//     self.typ
-//         .add_differential_privacy_noise(&mut agg_share.0, dp_param, rng)?;
-//     if len_before != agg_share.0.len() {
-//         return Err(VdafError::Uncategorized(
-//             "add_noise changed length of aggregate share.".to_string(),
-//         ));
-//     }
-//     Ok(())
-// }
 
 
 

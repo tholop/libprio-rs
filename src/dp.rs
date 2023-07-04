@@ -70,7 +70,14 @@ impl DifferentialPrivacyDistribution for DiscreteGaussian {}
 
 /// Strategy to make aggregate shares differentially private, e.g. by adding noise from a specific
 /// type of distribution instantiated with a given DP budget
-pub trait DifferentialPrivacyStrategy {}
+pub trait DifferentialPrivacyStrategy {
+    type Budget: DifferentialPrivacyBudget;
+    type Distribution: DifferentialPrivacyDistribution;
+    type Sensitivity;
+
+    fn from(b: Self::Budget) -> Self;
+    fn create_distribution(&self, s: Self::Sensitivity) -> Self::Distribution;
+}
 
 /// A zCDP budget used to create a Discrete Gaussian distribution
 pub struct ZCdpDiscreteGaussian {
