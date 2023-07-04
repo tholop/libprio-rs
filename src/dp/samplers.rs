@@ -206,3 +206,31 @@ pub fn sample_discrete_gaussian<R: Rng + ?Sized>(sigma: &BigURational, rng: &mut
         }
     }
 }
+
+/// Samples `BigInt` numbers according to the discrete Gaussian distribution with mean zero.
+/// The distribution is defined over the integers, represented by arbitrary-precision integers.
+/// The sampling procedute follows [CKS20].
+///
+/// [CKS20](https://arxiv.org/abs/2004.00010)
+#[derive(Clone, Debug)]
+pub struct DiscreteGaussian {
+    /// The standard deviation of the distribution.
+    std: BigURational,
+}
+
+impl DiscreteGaussian {
+    /// Create a new sampler from the Discrete Gaussian Distribution with the given
+    /// standard deviation and mean zero.
+    pub fn new(std: BigURational) -> DiscreteGaussian {
+        DiscreteGaussian { std }
+    }
+}
+
+impl Distribution<BigInt> for DiscreteGaussian {
+    fn sample<R>(&self, rng: &mut R) -> BigInt
+    where
+        R: Rng + ?Sized,
+    {
+        sample_discrete_gaussian(&self.std, rng) // TODO if we end up using BigURational the sampler should use it
+    }
+}
