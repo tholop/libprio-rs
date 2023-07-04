@@ -212,7 +212,7 @@ pub fn sample_discrete_gaussian<R: Rng + ?Sized>(sigma: &BigURational, rng: &mut
 
 /// Samples `BigInt` numbers according to the discrete Gaussian distribution with mean zero.
 /// The distribution is defined over the integers, represented by arbitrary-precision integers.
-/// The sampling procedute follows [CKS20].
+/// The sampling procedure follows [[CKS20]].
 ///
 /// [CKS20](https://arxiv.org/abs/2004.00010)
 #[derive(Clone, Debug)]
