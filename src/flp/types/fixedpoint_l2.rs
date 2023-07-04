@@ -173,8 +173,7 @@
 
 pub mod compatible_float;
 
-use crate::dp::DifferentialPrivacyStrategy;
-use crate::dp::{BigURational, ZCdpDiscreteGaussian, ZeroConcentratedDifferentialPrivacyBudget};
+use crate::dp::{BigURational, DifferentialPrivacyStrategy, ZCdpDiscreteGaussian};
 use crate::field::{Field128, FieldElement, FieldElementExt, FieldElementWithInteger};
 use crate::flp::gadgets::{BlindPolyEval, ParallelSumGadget, PolyEval};
 use crate::flp::types::fixedpoint_l2::compatible_float::CompatibleFloat;
@@ -711,6 +710,7 @@ where
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::dp::ZeroConcentratedDifferentialPrivacyBudget;
     use crate::field::{random_vector, Field128, FieldElement};
     use crate::flp::gadgets::ParallelSum;
     use crate::flp::types::test_utils::{flp_validity_test, ValidityTestCase};

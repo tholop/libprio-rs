@@ -16,8 +16,6 @@ use crate::{
     prng::PrngError,
     vdaf::prg::Seed,
 };
-#[cfg(feature = "experimental")]
-use rand::Rng;
 use serde::{Deserialize, Serialize};
 use std::{fmt::Debug, io::Cursor};
 

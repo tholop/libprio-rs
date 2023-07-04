@@ -52,8 +52,6 @@ use crate::vdaf::{
 };
 #[cfg(feature = "experimental")]
 use fixed::traits::Fixed;
-#[cfg(feature = "experimental")]
-use rand::Rng;
 use rand_core::SeedableRng;
 use std::convert::TryFrom;
 use std::fmt::Debug;
@@ -1160,7 +1158,7 @@ where
     fn add_noise_to_agg_share(
         &self,
         dp_strategy: &S,
-        agg_param: &Self::AggregationParam,
+        _agg_param: &Self::AggregationParam,
         agg_share: &mut Self::AggregateShare,
         num_measurements: usize,
     ) -> Result<(), VdafError> {
