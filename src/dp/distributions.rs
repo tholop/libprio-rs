@@ -261,7 +261,7 @@ impl DifferentialPrivacyStrategy for DiscreteGaussianDpStrategy<ZCdpBudget> {
     }
     /// Create a new sampler from the Discrete Gaussian Distribution with a standard
     /// deviation calibrated to provide `1/2 epsilon^2` zero-concentrated differential
-    /// privacy when added to the result of an interger-valued function with sensitivity
+    /// privacy when added to the result of an integer-valued function with sensitivity
     /// `sensitivity`, following Theorem 4 from [[CKS20]]
     ///
     /// [CKS20]: https://arxiv.org/pdf/2004.00010.pdf
