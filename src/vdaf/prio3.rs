@@ -49,9 +49,9 @@ use crate::flp::Type;
 #[cfg(feature = "experimental")]
 use crate::flp::TypeWithNoise;
 use crate::prng::Prng;
-use crate::vdaf::prg::{Prg, Seed};
 #[cfg(feature = "experimental")]
 use crate::vdaf::prg::SeedStreamSha3;
+use crate::vdaf::prg::{Prg, Seed};
 use crate::vdaf::{
     Aggregatable, AggregateShare, Aggregator, Client, Collector, OutputShare, PrepareTransition,
     Share, ShareDecodingParameter, Vdaf, VdafError,

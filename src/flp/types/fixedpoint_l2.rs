@@ -173,7 +173,7 @@
 
 pub mod compatible_float;
 
-use crate::dp::{BigURational, DifferentialPrivacyStrategy, ZCdpDiscreteGaussian};
+use crate::dp::{distributions::ZCdpDiscreteGaussian, BigURational, DifferentialPrivacyStrategy};
 use crate::field::{Field128, FieldElement, FieldElementExt, FieldElementWithInteger};
 use crate::flp::gadgets::{BlindPolyEval, ParallelSumGadget, PolyEval};
 use crate::flp::types::fixedpoint_l2::compatible_float::CompatibleFloat;
@@ -704,7 +704,7 @@ where
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::dp::ZeroConcentratedDifferentialPrivacyBudget;
+    use crate::dp::ZCdpBudget;
     use crate::field::{random_vector, Field128, FieldElement};
     use crate::flp::gadgets::ParallelSum;
     use crate::flp::types::test_utils::{flp_validity_test, ValidityTestCase};
@@ -786,10 +786,9 @@ mod tests {
         let mut v = vsum
             .truncate(vsum.encode_measurement(&fp_vec).unwrap())
             .unwrap();
-        let strategy =
-            ZCdpDiscreteGaussian::from_budget(ZeroConcentratedDifferentialPrivacyBudget {
-                epsilon: BigURational::new(100u8.into(), 3u8.into()),
-            });
+        let strategy = ZCdpDiscreteGaussian::from_budget(ZCdpBudget {
+            epsilon: BigURational::new(100u8.into(), 3u8.into()),
+        });
         let _ = &vsum
             .add_noise_to_agg_share(
                 &strategy,

@@ -48,7 +48,10 @@ use num_bigint::{BigInt, BigUint};
 use num_traits::{One, Zero};
 use rand::{distributions::Distribution, distributions::Uniform, Rng};
 
-use super::BigURational;
+use super::{
+    BigURational, DifferentialPrivacyBudget, DifferentialPrivacyDistribution,
+    DifferentialPrivacyStrategy, ZCdpBudget,
+};
 
 /// Sample from the Bernoulli(1/2) distribution.
 ///
@@ -235,6 +238,85 @@ impl Distribution<BigInt> for DiscreteGaussian {
     }
 }
 
+impl DifferentialPrivacyDistribution for DiscreteGaussian {}
 
+/// A DP strategy using the discrete gaussian distribution.
+pub struct DiscreteGaussianDpStrategy<B>
+where
+    B: DifferentialPrivacyBudget,
+{
+    budget: B,
+}
 
+/// A DP strategy using the discrete gaussian distribution providing zero-concentrated DP.
+pub type ZCdpDiscreteGaussian = DiscreteGaussianDpStrategy<ZCdpBudget>;
 
+impl DifferentialPrivacyStrategy for DiscreteGaussianDpStrategy<ZCdpBudget> {
+    type Budget = ZCdpBudget;
+    type Distribution = DiscreteGaussian;
+    type Sensitivity = BigURational;
+
+    fn from_budget(b: ZCdpBudget) -> DiscreteGaussianDpStrategy<ZCdpBudget> {
+        DiscreteGaussianDpStrategy { budget: b }
+    }
+    /// Create a new sampler from the Discrete Gaussian Distribution with a standard
+    /// deviation calibrated to provide `1/2 epsilon^2` zero-concentrated differential
+    /// privacy when added to the result of an interger-valued function with sensitivity
+    /// `sensitivity`, following Theorem 4 from [[CKS20]]
+    ///
+    /// [CKS20]: https://arxiv.org/pdf/2004.00010.pdf
+    fn create_distribution(&self, sensitivity: BigURational) -> DiscreteGaussian {
+        DiscreteGaussian::new(sensitivity / self.budget.epsilon.clone())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+
+    use super::*;
+    use crate::dp::ZeroConcentratedDifferentialPrivacyBudget;
+    use crate::vdaf::prg::{Seed, SeedStreamSha3};
+
+    use num_bigint::BigUint;
+    use rand::SeedableRng;
+
+    #[test]
+    fn test_discrete_gaussian() {
+        let sampler = DiscreteGaussian::new(BigURational::from_integer(BigUint::from(5u8)));
+
+        // check samples are consistent
+        let mut rng = SeedStreamSha3::from_seed(Seed::from_bytes([0u8; 16]));
+        let samples: Vec<i8> = (0..10)
+            .map(|_| i8::try_from(sampler.sample(&mut rng)).unwrap())
+            .collect();
+        let samples1: Vec<i8> = (0..10)
+            .map(|_| i8::try_from(sampler.sample(&mut rng)).unwrap())
+            .collect();
+        assert_eq!(samples, vec!(3, 8, -7, 1, 2, 10, 8, -3, 0, 0));
+        assert_eq!(samples1, vec!(-1, 2, 5, -1, -1, 3, 3, -1, -1, 3));
+    }
+
+    #[test]
+    fn test_zcdp_discrete_gaussian() {
+        let sampler = DiscreteGaussian::new(BigURational::from_integer(BigUint::from(5u8)));
+
+        // check samples are consistent
+        let mut rng = SeedStreamSha3::from_seed(Seed::from_bytes([0u8; 16]));
+        let samples: Vec<i8> = (0..10)
+            .map(|_| i8::try_from(sampler.sample(&mut rng)).unwrap())
+            .collect();
+
+        // test zcdp constructor
+        let zcdp = ZCdpDiscreteGaussian {
+            budget: ZeroConcentratedDifferentialPrivacyBudget {
+                epsilon: BigURational::new(1u8.into(), 5u8.into()),
+            },
+        };
+        let sampler1 = zcdp.create_distribution(BigURational::from_integer(1u8.into()));
+        let mut rng1 = SeedStreamSha3::from_seed(Seed::from_bytes([0u8; 16]));
+        let samples1: Vec<i8> = (0..10)
+            .map(|_| i8::try_from(sampler1.sample(&mut rng1)).unwrap())
+            .collect();
+        assert_eq!(samples1, samples);
+    }
+}
