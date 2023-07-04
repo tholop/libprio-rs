@@ -27,8 +27,8 @@
 //! [DPRS23]: https://ia.cr/2023/130
 //! [draft-irtf-cfrg-vdaf-06]: https://datatracker.ietf.org/doc/draft-irtf-cfrg-vdaf/06/
 
-use super::AggregatorWithNoise;
 use super::prg::PrgSha3;
+use super::AggregatorWithNoise;
 use crate::codec::{CodecError, Decode, Encode, ParameterizedDecode};
 use crate::dp::DifferentialPrivacyStrategy;
 use crate::field::{decode_fieldvec, FftFriendlyFieldElement, FieldElement};
@@ -1150,8 +1150,8 @@ where
     }
 }
 
-
-impl<T, P, S, const SEED_SIZE: usize> AggregatorWithNoise<SEED_SIZE, 16, S> for Prio3<T, P, SEED_SIZE>
+impl<T, P, S, const SEED_SIZE: usize> AggregatorWithNoise<SEED_SIZE, 16, S>
+    for Prio3<T, P, SEED_SIZE>
 where
     T: TypeWithNoise<S>,
     P: Prg<SEED_SIZE>,
@@ -1164,11 +1164,15 @@ where
         agg_share: &mut Self::AggregateShare,
         num_measurements: usize,
     ) -> Result<(), VdafError> {
-        let rng = SeedStreamSha3::from_seed(Seed::from_bytes([0u8; 16]));
+        let mut rng = SeedStreamSha3::from_seed(Seed::from_bytes([0u8; 16]));
 
         let len_before = agg_share.0.len();
-        self.typ
-            .add_noise_to_agg_share(dp_strategy, &mut agg_share.0, num_measurements, &mut rng)?;
+        self.typ.add_noise_to_agg_share(
+            dp_strategy,
+            &mut agg_share.0,
+            num_measurements,
+            &mut rng,
+        )?;
         if len_before != agg_share.0.len() {
             return Err(VdafError::Uncategorized(
                 "add_noise changed length of aggregate share.".to_string(),
@@ -1177,8 +1181,6 @@ where
         Ok(())
     }
 }
-
-
 
 impl<T, P, const SEED_SIZE: usize> Collector for Prio3<T, P, SEED_SIZE>
 where

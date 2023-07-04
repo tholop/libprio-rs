@@ -68,6 +68,11 @@ impl Distribution<BigInt> for DiscreteGaussian {
 
 impl DifferentialPrivacyDistribution for DiscreteGaussian {}
 
+/// A zCDP budget used to create a Discrete Gaussian distribution
+pub struct ZCdpDiscreteGaussian {
+    budget: ZeroConcentratedDifferentialPrivacyBudget,
+}
+
 /// Strategy to make aggregate shares differentially private, e.g. by adding noise from a specific
 /// type of distribution instantiated with a given DP budget
 pub trait DifferentialPrivacyStrategy {
@@ -75,25 +80,25 @@ pub trait DifferentialPrivacyStrategy {
     type Distribution: DifferentialPrivacyDistribution;
     type Sensitivity;
 
-    fn from(b: Self::Budget) -> Self;
+    fn from_budget(b: Self::Budget) -> Self;
     fn create_distribution(&self, s: Self::Sensitivity) -> Self::Distribution;
 }
 
-/// A zCDP budget used to create a Discrete Gaussian distribution
-pub struct ZCdpDiscreteGaussian {
-    pub budget: ZeroConcentratedDifferentialPrivacyBudget,
-}
+impl DifferentialPrivacyStrategy for ZCdpDiscreteGaussian {
+    type Budget = ZeroConcentratedDifferentialPrivacyBudget;
+    type Distribution = DiscreteGaussian;
+    type Sensitivity = BigURational;
 
-impl DifferentialPrivacyStrategy for ZCdpDiscreteGaussian {}
-
-impl ZCdpDiscreteGaussian {
+    fn from_budget(b: Self::Budget) -> ZCdpDiscreteGaussian {
+        ZCdpDiscreteGaussian { budget: b }
+    }
     /// Create a new sampler from the Discrete Gaussian Distribution with a standard
     /// deviation calibrated to provide `1/2 epsilon^2` zero-concentrated differential
     /// privacy when added to the result of an interger-valued function with sensitivity
     /// `sensitivity`, following Theorem 4 from [[CKS20]]
     ///
     /// [CKS20]: https://arxiv.org/pdf/2004.00010.pdf
-    pub fn create_distribution(&self, sensitivity: BigURational) -> DiscreteGaussian {
+    fn create_distribution(&self, sensitivity: BigURational) -> DiscreteGaussian {
         DiscreteGaussian::new(sensitivity / self.budget.epsilon.clone())
     }
 }

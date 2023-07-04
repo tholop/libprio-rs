@@ -551,12 +551,11 @@ pub trait Type: Sized + Eq + Clone + Debug {
 
         Ok(())
     }
-
 }
 
 pub trait TypeWithNoise<S>: Type
 where
-    S: DifferentialPrivacyStrategy
+    S: DifferentialPrivacyStrategy,
 {
     /// Optionally add noise to the aggregate share to obtain differential privacy.
     /// Post-condition: The size of `_aggregate_share` has not changed.
@@ -834,8 +833,6 @@ mod tests {
         type Measurement = F::Integer;
         type AggregateResult = F::Integer;
         type Field = F;
-        #[cfg(feature = "experimental")]
-        type DifferentialPrivacyParam = ();
 
         fn valid(
             &self,
@@ -971,8 +968,6 @@ mod tests {
         type Measurement = F::Integer;
         type AggregateResult = F::Integer;
         type Field = F;
-        #[cfg(feature = "experimental")]
-        type DifferentialPrivacyParam = ();
 
         fn valid(
             &self,

@@ -173,6 +173,7 @@
 
 pub mod compatible_float;
 
+use crate::dp::DifferentialPrivacyStrategy;
 use crate::dp::{BigURational, ZCdpDiscreteGaussian, ZeroConcentratedDifferentialPrivacyBudget};
 use crate::field::{Field128, FieldElement, FieldElementExt, FieldElementWithInteger};
 use crate::flp::gadgets::{BlindPolyEval, ParallelSumGadget, PolyEval};
@@ -204,7 +205,7 @@ pub fn zero_privacy_parameter() -> PrivacyParameterType {
 /// particular, exactly the following types are supported:
 /// `FixedI16<U15>`, `FixedI32<U31>` and `FixedI64<U63>`.
 ///
-/// The type provides an `add_differential_privacy_noise` function that will add discrete Gaussian noise to the
+/// The type provides an `add_noise_to_agg_share` function that will add discrete Gaussian noise to the
 /// aggregate, calibrated to the privacy parameter given at object construction. This will result
 /// in the aggregate satisfying zero-concentrated differential privacy.
 ///
@@ -259,7 +260,7 @@ where
     /// Return a new [`FixedPointBoundedL2VecSum`] type parameter. Each value of this type is a
     /// fixed point vector with `entries` entries. The aggregation result will satisfy
     /// `1/2 * privacy_parameter^2` zero-concentrated differential privacy after the
-    /// `add_differential_privacy_noise` function is called on it.
+    /// `add_noise_to_agg_share` function is called on it.
     pub fn new(entries: usize) -> Result<Self, FlpError> {
         // (0) initialize constants
         let fi_one = u128::from(Field128::one());
@@ -617,7 +618,8 @@ where
     }
 }
 
-impl<T, SPoly, SBlindPoly> TypeWithNoise<ZCdpDiscreteGaussian> for FixedPointBoundedL2VecSum<T, SPoly, SBlindPoly>
+impl<T, SPoly, SBlindPoly> TypeWithNoise<ZCdpDiscreteGaussian>
+    for FixedPointBoundedL2VecSum<T, SPoly, SBlindPoly>
 where
     T: Fixed + CompatibleFloat,
     SPoly: ParallelSumGadget<Field128, PolyEval<Field128>> + Eq + Clone + 'static,
@@ -673,9 +675,6 @@ where
         Ok(())
     }
 }
-
-
-
 
 /// Compute the square of the L2 norm of a vector of fixed-point numbers encoded as field elements.
 ///
@@ -793,10 +792,15 @@ mod tests {
         let mut v = vsum
             .truncate(vsum.encode_measurement(&fp_vec).unwrap())
             .unwrap();
+        let strategy =
+            ZCdpDiscreteGaussian::from_budget(ZeroConcentratedDifferentialPrivacyBudget {
+                epsilon: BigURational::new(100u8.into(), 3u8.into()),
+            });
         let _ = &vsum
-            .add_differential_privacy_noise(
+            .add_noise_to_agg_share(
+                &strategy,
                 &mut v,
-                &BigURational::new(100u8.into(), 3u8.into()),
+                3,
                 &mut SeedStreamSha3::from_seed(Seed::from_bytes([0u8; 16])),
             )
             .unwrap();

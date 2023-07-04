@@ -188,7 +188,7 @@ pub fn sample_discrete_gaussian<R: Rng + ?Sized>(sigma: &BigURational, rng: &mut
     }
     let t = sigma.floor() + BigUint::one();
     loop {
-        let y = sample_discrete_laplace(&t.clone(), rng);
+        let y = sample_discrete_laplace(&t, rng);
 
         // absolute value without type conversion
         let y_abs: BigURational = BigUint::new(y.to_u32_digits().1).into();
