@@ -28,8 +28,10 @@
 //! [draft-irtf-cfrg-vdaf-06]: https://datatracker.ietf.org/doc/draft-irtf-cfrg-vdaf/06/
 
 use super::prg::PrgSha3;
+#[cfg(feature = "experimental")]
 use super::AggregatorWithNoise;
 use crate::codec::{CodecError, Decode, Encode, ParameterizedDecode};
+#[cfg(feature = "experimental")]
 use crate::dp::DifferentialPrivacyStrategy;
 use crate::field::{decode_fieldvec, FftFriendlyFieldElement, FieldElement};
 use crate::field::{Field128, Field64};
@@ -43,15 +45,20 @@ use crate::flp::types::fixedpoint_l2::{
     compatible_float::CompatibleFloat, FixedPointBoundedL2VecSum,
 };
 use crate::flp::types::{Average, Count, Histogram, Sum, SumVec};
-use crate::flp::{Type, TypeWithNoise};
+use crate::flp::Type;
+#[cfg(feature = "experimental")]
+use crate::flp::TypeWithNoise;
 use crate::prng::Prng;
-use crate::vdaf::prg::{Prg, Seed, SeedStreamSha3};
+use crate::vdaf::prg::{Prg, Seed};
+#[cfg(feature = "experimental")]
+use crate::vdaf::prg::SeedStreamSha3;
 use crate::vdaf::{
     Aggregatable, AggregateShare, Aggregator, Client, Collector, OutputShare, PrepareTransition,
     Share, ShareDecodingParameter, Vdaf, VdafError,
 };
 #[cfg(feature = "experimental")]
 use fixed::traits::Fixed;
+#[cfg(feature = "experimental")]
 use rand_core::SeedableRng;
 use std::convert::TryFrom;
 use std::fmt::Debug;
@@ -1148,6 +1155,7 @@ where
     }
 }
 
+#[cfg(feature = "experimental")]
 impl<T, P, S, const SEED_SIZE: usize> AggregatorWithNoise<SEED_SIZE, 16, S>
     for Prio3<T, P, SEED_SIZE>
 where

@@ -46,6 +46,8 @@
 //!
 //! [draft-irtf-cfrg-vdaf-06]: https://datatracker.ietf.org/doc/draft-irtf-cfrg-vdaf/05/
 
+
+#[cfg(feature = "experimental")]
 use crate::dp::DifferentialPrivacyStrategy;
 use crate::fft::{discrete_fourier_transform, discrete_fourier_transform_inv_finish, FftError};
 use crate::field::{FftFriendlyFieldElement, FieldElement, FieldElementWithInteger, FieldError};
@@ -553,6 +555,9 @@ pub trait Type: Sized + Eq + Clone + Debug {
     }
 }
 
+
+/// A type which supports adding noise to aggregate shares for Server Differential Privacy.
+#[cfg(feature = "experimental")]
 pub trait TypeWithNoise<S>: Type
 where
     S: DifferentialPrivacyStrategy,

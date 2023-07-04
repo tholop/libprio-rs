@@ -8,8 +8,6 @@ use num_bigint::BigUint;
 #[cfg(feature = "experimental")]
 use num_rational::Ratio;
 
-#[cfg(feature = "experimental")]
-mod samplers;
 
 #[cfg(feature = "experimental")]
 /// Alias for arbitrary precision unsigned rationals.
@@ -32,15 +30,15 @@ pub struct ZeroConcentratedDifferentialPrivacyBudget {
     pub epsilon: BigURational,
 }
 
-type ZCDPBudget = ZeroConcentratedDifferentialPrivacyBudget;
+type ZCdpBudget = ZeroConcentratedDifferentialPrivacyBudget;
 
-impl DifferentialPrivacyBudget for ZCDPBudget {}
+impl DifferentialPrivacyBudget for ZCdpBudget {}
 
 #[cfg(feature = "experimental")]
 impl DifferentialPrivacyDistribution for DiscreteGaussian {}
 
 /// A DP strategy using the discrete gaussian distribution.
-pub struct DPDiscreteGaussian<B>
+pub struct DiscreteGaussianDpStrategy<B>
 where
     B: DifferentialPrivacyBudget,
 {
@@ -48,7 +46,7 @@ where
 }
 
 /// A DP strategy using the discrete gaussian distribution providing zero-concentrated DP.
-pub type ZCdpDiscreteGaussian = DPDiscreteGaussian<ZeroConcentratedDifferentialPrivacyBudget>;
+pub type ZCdpDiscreteGaussian = DiscreteGaussianDpStrategy<ZeroConcentratedDifferentialPrivacyBudget>;
 
 /// Strategy to make aggregate shares differentially private, e.g. by adding noise from a specific
 /// type of distribution instantiated with a given DP budget.
@@ -72,13 +70,13 @@ pub trait DifferentialPrivacyStrategy {
 }
 
 #[cfg(feature = "experimental")]
-impl DifferentialPrivacyStrategy for DPDiscreteGaussian<ZCDPBudget> {
-    type Budget = ZCDPBudget;
+impl DifferentialPrivacyStrategy for DiscreteGaussianDpStrategy<ZCdpBudget> {
+    type Budget = ZCdpBudget;
     type Distribution = DiscreteGaussian;
     type Sensitivity = BigURational;
 
-    fn from_budget(b: ZCDPBudget) -> DPDiscreteGaussian<ZCDPBudget> {
-        DPDiscreteGaussian { budget: b }
+    fn from_budget(b: ZCdpBudget) -> DiscreteGaussianDpStrategy<ZCdpBudget> {
+        DiscreteGaussianDpStrategy { budget: b }
     }
     /// Create a new sampler from the Discrete Gaussian Distribution with a standard
     /// deviation calibrated to provide `1/2 epsilon^2` zero-concentrated differential
@@ -91,10 +89,14 @@ impl DifferentialPrivacyStrategy for DPDiscreteGaussian<ZCDPBudget> {
     }
 }
 
+
+
+
+
 #[cfg(test)]
 mod tests {
 
-    use rand::distributions::Distribution;
+    use rand::distributions::{Distribution};
 
     use crate::vdaf::prg::{Seed, SeedStreamSha3};
 
@@ -131,3 +133,10 @@ mod tests {
         assert_eq!(samples2, samples);
     }
 }
+
+
+#[cfg(feature = "experimental")]
+mod samplers;
+
+#[cfg(feature = "experimental")]
+mod experimental_strategy;
