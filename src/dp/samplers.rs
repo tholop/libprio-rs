@@ -231,6 +231,6 @@ impl Distribution<BigInt> for DiscreteGaussian {
     where
         R: Rng + ?Sized,
     {
-        sample_discrete_gaussian(&self.std, rng) // TODO if we end up using BigURational the sampler should use it
+        sample_discrete_gaussian(&self.std, rng)
     }
 }

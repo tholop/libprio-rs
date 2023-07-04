@@ -189,12 +189,6 @@ use std::{convert::TryFrom, convert::TryInto, fmt::Debug, marker::PhantomData};
 /// The privacy parameter which is passed to `FixedPointBoundedL2VecSum` has this type.
 pub type PrivacyParameterType = BigURational;
 
-/// If no noise should be added during aggregation, use the value returned by this function as
-/// privacy parameter.
-pub fn zero_privacy_parameter() -> PrivacyParameterType {
-    PrivacyParameterType::new(1u8.into(), 0u8.into())
-}
-
 /// The fixed point vector sum data type. Each measurement is a vector of fixed point numbers of
 /// type `T`, and the aggregate result is the float vector of the sum of the measurements.
 ///
