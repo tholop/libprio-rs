@@ -214,7 +214,7 @@ pub fn sample_discrete_gaussian<R: Rng + ?Sized>(sigma: &BigURational, rng: &mut
 /// The distribution is defined over the integers, represented by arbitrary-precision integers.
 /// The sampling procedure follows [[CKS20]].
 ///
-/// [CKS20](https://arxiv.org/abs/2004.00010)
+/// [CKS20]: https://arxiv.org/abs/2004.00010
 #[derive(Clone, Debug)]
 pub struct DiscreteGaussian {
     /// The standard deviation of the distribution.
