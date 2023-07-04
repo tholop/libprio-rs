@@ -297,26 +297,29 @@ mod tests {
     }
 
     #[test]
+    /// Make sure that the distribution created by `create_distribution`
+    /// of `ZCdpDicreteGaussian` is the same one as manually creating one
+    /// by using the constructor of `DiscreteGaussian` directly.
     fn test_zcdp_discrete_gaussian() {
-        let sampler = DiscreteGaussian::new(BigURational::from_integer(BigUint::from(5u8)));
-
-        // check samples are consistent
+        // sample from a manually created distribution
+        let sampler1 = DiscreteGaussian::new(BigURational::from_integer(BigUint::from(5u8)));
         let mut rng = SeedStreamSha3::from_seed(Seed::from_bytes([0u8; 16]));
-        let samples: Vec<i8> = (0..10)
-            .map(|_| i8::try_from(sampler.sample(&mut rng)).unwrap())
+        let samples1: Vec<i8> = (0..10)
+            .map(|_| i8::try_from(sampler1.sample(&mut rng)).unwrap())
             .collect();
 
-        // test zcdp constructor
+        // sample from the distribution created by the `zcdp` strategy
         let zcdp = ZCdpDiscreteGaussian {
             budget: ZeroConcentratedDifferentialPrivacyBudget {
                 epsilon: BigURational::new(1u8.into(), 5u8.into()),
             },
         };
-        let sampler1 = zcdp.create_distribution(BigURational::from_integer(1u8.into()));
-        let mut rng1 = SeedStreamSha3::from_seed(Seed::from_bytes([0u8; 16]));
-        let samples1: Vec<i8> = (0..10)
-            .map(|_| i8::try_from(sampler1.sample(&mut rng1)).unwrap())
+        let sampler2 = zcdp.create_distribution(BigURational::from_integer(1u8.into()));
+        let mut rng2 = SeedStreamSha3::from_seed(Seed::from_bytes([0u8; 16]));
+        let samples2: Vec<i8> = (0..10)
+            .map(|_| i8::try_from(sampler2.sample(&mut rng2)).unwrap())
             .collect();
-        assert_eq!(samples1, samples);
+
+        assert_eq!(samples2, samples1);
     }
 }
