@@ -3,7 +3,6 @@
 //! Differential privacy (DP) primitives.
 use num_bigint::{BigUint, TryFromBigIntError};
 use num_rational::{BigRational, Ratio};
-use num_traits::Unsigned;
 
 /// Errors propagated by methods in this module.
 #[derive(Debug, thiserror::Error)]
@@ -27,21 +26,22 @@ pub type BigURational = Ratio<BigUint>;
 /// Positive finite precision rational number to represent DP and noise distribution parameters in
 /// protocol messages and manipulate them without rounding errors.
 #[derive(Clone, Debug)]
-pub struct URational<T: Unsigned> {
-    numerator: T,
-    denominator: T,
+pub struct Rational {
+    numerator: u32,
+    denominator: u32,
 }
 
-impl<T> URational<T>
-where
-    T: Unsigned,
-{
+impl Rational {
     /// Construct a `URational` number from numerator and denominator. Errors if denominator is zero.
-    pub fn from_unsigned(n: T, d: T) -> Result<Self, DPError> {
-        if d.is_zero() {
+    pub fn from_unsigned<T>(n: T, d: T) -> Result<Self, DPError>
+    where
+        T: Into<u32>,
+    {
+        let (n, d) = (n.into(), d.into());
+        if d == 0u32 {
             Err(DPError::ZeroDenominator())
         } else {
-            Ok(URational {
+            Ok(Rational {
                 numerator: n,
                 denominator: d,
             })
@@ -49,13 +49,10 @@ where
     }
 }
 
-impl<T> From<URational<T>> for BigURational
-where
-    T: Unsigned + Into<u128>,
-{
+impl From<Rational> for BigURational {
     // we don't want to expose BigUint to the public API, hence the Into<u128> requirement instead
-    fn from(r: URational<T>) -> Self {
-        BigURational::new(r.numerator.into().into(), r.denominator.into().into())
+    fn from(r: Rational) -> Self {
+        BigURational::new(r.numerator.into(), r.denominator.into())
     }
 }
 
@@ -80,10 +77,7 @@ impl ZCdpBudget {
     /// for a `rho`-ZCDP budget.
     ///
     /// [CKS20]: https://arxiv.org/pdf/2004.00010.pdf
-    pub fn new<T>(epsilon: URational<T>) -> Self
-    where
-        T: Unsigned + Into<u128>,
-    {
+    pub fn new(epsilon: Rational) -> Self {
         ZCdpBudget {
             epsilon: epsilon.into(),
         }

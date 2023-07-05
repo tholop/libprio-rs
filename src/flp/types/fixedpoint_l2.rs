@@ -704,7 +704,7 @@ where
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::dp::{URational, ZCdpBudget};
+    use crate::dp::{Rational, ZCdpBudget};
     use crate::field::{random_vector, Field128, FieldElement};
     use crate::flp::gadgets::ParallelSum;
     use crate::flp::types::test_utils::{flp_validity_test, ValidityTestCase};
@@ -787,7 +787,7 @@ mod tests {
             .truncate(vsum.encode_measurement(&fp_vec).unwrap())
             .unwrap();
         let strategy = ZCdpDiscreteGaussian::from_budget(ZCdpBudget::new(
-            URational::from_unsigned(100u8, 3u8).unwrap(),
+            Rational::from_unsigned(100u8, 3u8).unwrap(),
         ));
         let _ = &vsum
             .add_noise_to_agg_share(
