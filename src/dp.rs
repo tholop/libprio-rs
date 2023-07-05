@@ -24,21 +24,8 @@ pub enum DPError {
 /// Alias for arbitrary precision unsigned rationals.
 pub type BigURational = Ratio<BigUint>;
 
-/// Marker trait for differential privacy budgets (regardless of the specific accounting method).
-pub trait DifferentialPrivacyBudget {}
-
-/// Marker trait for differential privacy scalar noise distributions.
-pub trait DifferentialPrivacyDistribution {}
-
-/// Zero-concentrated differential privacy (ZCDP) budget as defined in [[BS16]].
-///
-/// [BS16]: https://arxiv.org/pdf/1605.02065.pdf
-pub struct ZeroConcentratedDifferentialPrivacyBudget {
-    epsilon: BigURational,
-}
-
-/// Positive rational number to represent DP and noise distribution parameters in protocol messages
-/// and manipulate them without rounding errors.
+/// Positive finite precision rational number to represent DP and noise distribution parameters in
+/// protocol messages and manipulate them without rounding errors.
 #[derive(Clone, Debug)]
 pub struct URational<T: Unsigned> {
     numerator: T,
@@ -72,7 +59,36 @@ where
     }
 }
 
-impl ZeroConcentratedDifferentialPrivacyBudget {
+/// Marker trait for differential privacy budgets (regardless of the specific accounting method).
+pub trait DifferentialPrivacyBudget {}
+
+/// Marker trait for differential privacy scalar noise distributions.
+pub trait DifferentialPrivacyDistribution {}
+
+/// Zero-concentrated differential privacy (ZCDP) budget as defined in [[BS16]].
+///
+/// [BS16]: https://arxiv.org/pdf/1605.02065.pdf
+pub struct ZeroConcentratedDifferentialPrivacyBudget {
+    epsilon: BigURational,
+}
+
+/// Alias for ZeroConcentratedDifferentialPrivacyBudget.
+pub type ZCdpBudget = ZeroConcentratedDifferentialPrivacyBudget;
+
+impl ZCdpBudget {
+    /// Create a budget for parameter `epsilon`, using the notation from [[CKS20]] where `rho = (epsilon**2)/2`
+    /// for a `rho`-ZCDP budget.
+    ///
+    /// [CKS20]: https://arxiv.org/pdf/2004.00010.pdf
+    pub fn new<T>(epsilon: URational<T>) -> Self
+    where
+        T: Unsigned + Into<u128>,
+    {
+        ZCdpBudget {
+            epsilon: epsilon.into(),
+        }
+    }
+
     /// Create a budget for parameter `epsilon`, using the notation from [[CKS20]] where `rho = (epsilon**2)/2`
     /// for a `rho`-ZCDP budget. Returns a `DPError` if the input float is not finite and positive.
     ///
@@ -88,23 +104,7 @@ impl ZeroConcentratedDifferentialPrivacyBudget {
             epsilon: eps_rational,
         })
     }
-
-    /// Create a budget for parameter `epsilon`, using the notation from [[CKS20]] where `rho = (epsilon**2)/2`
-    /// for a `rho`-ZCDP budget.
-    ///
-    /// [CKS20]: https://arxiv.org/pdf/2004.00010.pdf
-    pub fn new<T>(epsilon: URational<T>) -> Self
-    where
-        T: Unsigned + Into<u128>,
-    {
-        ZeroConcentratedDifferentialPrivacyBudget {
-            epsilon: epsilon.into(),
-        }
-    }
 }
-
-/// Alias for ZeroConcentratedDifferentialPrivacyBudget.
-pub type ZCdpBudget = ZeroConcentratedDifferentialPrivacyBudget;
 
 impl DifferentialPrivacyBudget for ZCdpBudget {}
 /// Strategy to make aggregate shares differentially private, e.g. by adding noise from a specific
