@@ -259,6 +259,7 @@ impl DifferentialPrivacyStrategy for DiscreteGaussianDpStrategy<ZCdpBudget> {
     fn from_budget(b: ZCdpBudget) -> DiscreteGaussianDpStrategy<ZCdpBudget> {
         DiscreteGaussianDpStrategy { budget: b }
     }
+
     /// Create a new sampler from the Discrete Gaussian Distribution with a standard
     /// deviation calibrated to provide `1/2 epsilon^2` zero-concentrated differential
     /// privacy when added to the result of an integer-valued function with sensitivity
@@ -274,7 +275,6 @@ impl DifferentialPrivacyStrategy for DiscreteGaussianDpStrategy<ZCdpBudget> {
 mod tests {
 
     use super::*;
-    use crate::dp::ZeroConcentratedDifferentialPrivacyBudget;
     use crate::vdaf::prg::{Seed, SeedStreamSha3};
 
     use num_bigint::BigUint;
@@ -302,7 +302,7 @@ mod tests {
     /// by using the constructor of `DiscreteGaussian` directly.
     fn test_zcdp_discrete_gaussian() {
         // sample from a manually created distribution
-        let sampler1 = DiscreteGaussian::new(BigURational::from_integer(BigUint::from(5u8)));
+        let sampler1 = DiscreteGaussian::new(BigURational::from_integer(BigUint::from(4u8)));
         let mut rng = SeedStreamSha3::from_seed(Seed::from_bytes([0u8; 16]));
         let samples1: Vec<i8> = (0..10)
             .map(|_| i8::try_from(sampler1.sample(&mut rng)).unwrap())
@@ -310,9 +310,7 @@ mod tests {
 
         // sample from the distribution created by the `zcdp` strategy
         let zcdp = ZCdpDiscreteGaussian {
-            budget: ZeroConcentratedDifferentialPrivacyBudget {
-                epsilon: BigURational::new(1u8.into(), 5u8.into()),
-            },
+            budget: ZCdpBudget::from_float(0.25).unwrap(),
         };
         let sampler2 = zcdp.create_distribution(BigURational::from_integer(1u8.into()));
         let mut rng2 = SeedStreamSha3::from_seed(Seed::from_bytes([0u8; 16]));
