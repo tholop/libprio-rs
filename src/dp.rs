@@ -64,10 +64,11 @@ where
 
 impl<T> From<URational<T>> for BigURational
 where
-    T: Unsigned + Into<BigUint>,
+    T: Unsigned + Into<u128>,
 {
+    // we don't want to expose BigUint to the public API, hence the Into<u128> requirement instead
     fn from(r: URational<T>) -> Self {
-        BigURational::new(r.numerator.into(), r.denominator.into())
+        BigURational::new(r.numerator.into().into(), r.denominator.into().into())
     }
 }
 
@@ -94,7 +95,7 @@ impl ZeroConcentratedDifferentialPrivacyBudget {
     /// [CKS20]: https://arxiv.org/pdf/2004.00010.pdf
     pub fn new<T>(epsilon: URational<T>) -> Self
     where
-        T: Unsigned + Into<BigUint>,
+        T: Unsigned + Into<u128>,
     {
         ZeroConcentratedDifferentialPrivacyBudget {
             epsilon: epsilon.into(),
