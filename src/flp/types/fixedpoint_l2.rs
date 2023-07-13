@@ -351,7 +351,6 @@ where
         })
     }
 
-
     fn add_noise<R: Rng>(
         &self,
         dp_strategy: &ZCdpDiscreteGaussian,
@@ -368,26 +367,53 @@ where
             .create_distribution(Ratio::<BigUint>::from_integer(sensitivity))
             .map_err(FlpError::DifferentialPrivacy)?;
 
+        // 2. Generate noise for each slice entry and apply it.
         for entry in agg_share.iter_mut() {
-            // we get the noise as bigint, so we have to convert it to i128,
-            // for this we compute its modulo wrt the field modulus, then get
-            // the i128 value, which we put into the field.
+            // (a) noise as i128
+            //
+            // We get the noise as BigInt, but we have to fit it into a finite
+            // field. So first we convert it into i128 by taking the remainder
+            // wrt the field modulus.
 
-            // 2. noise as i128
+            // Detailed explanation:
+            //
+            // The noise, as returned by the sampler is a BigInt, i.e., any
+            // possible integer. But the field only contains values in the range
+            // [0..modulus). So first we use the `%` operator to truncate the
+            // noise into the range (-modulus/2,modulus/2).
+            //
+            // Note that `%` is the "remainder" operation, and preserves the
+            // sign of the first operand if the second operand is positive.
+            // This is exactly the behaviour that we want, as we want to keep
+            // the information whether the noise was negative or positive.
+            //
+            // After taking the remainder, we know that the value fits into i128
+            // since `modulus < 2^128` and thus `-2^127 < noise < 2^127`.
+            //
             let noise: BigInt = sampler.sample(rng);
-            let noise: BigInt = noise % BigInt::from(Field128::modulus());
+            let noise: BigInt = noise % (BigInt::from(Field128::modulus()) / 2);
             let noise: i128 = noise.try_into().map_err(|e: TryFromBigIntError<BigInt>| {
                 FlpError::DifferentialPrivacy(DpError::BigIntConversion(e))
             })?;
 
-            // Compute the field element corresponding to the i128 value.
+            // (b) Compute the field element corresponding to the i128 value.
             //
             // For this we compute the absolute value of the noise,
             // put it into the field, and then invert that field value
             // if the original noise has been negative.
             //
-            // We do this because the negative values in `F` are actually
-            // encoded by positive, "wrapped-around" values in `F::Integer`.
+            // Detailed explanation:
+            //
+            // The underlying representation of the field is an unsigned (!)
+            // integer. The negative values in `F` are encoded by positive,
+            // "wrapped-around" values in the underlying u128.
+            // That is, a value `-2^127 < noise < 0` is represented by the
+            // value `modulus - noise`.
+            //
+            // Instead of taking care of this conversion manually, we let the
+            // implementation of the field handle this case, by calling `Field128::neg()`
+            // after embedding the absolute value into the field.
+            //
             let pos_noise: u128 = noise.abs_diff(0);
             let f_pos_noise = Field128::from(Field128::valid_integer_try_from::<u128>(pos_noise)?);
             let f_noise: Field128 = if noise < 0 {
@@ -396,7 +422,7 @@ where
                 f_pos_noise
             };
 
-            // apply generated noise to each entry of the aggregate share.
+            // (c) Apply generated noise to each entry of the aggregate share.
             *entry += f_noise;
         }
 
@@ -661,7 +687,6 @@ where
         2
     }
 }
-
 
 impl<T, SPoly, SBlindPoly> TypeWithNoise<ZCdpDiscreteGaussian>
     for FixedPointBoundedL2VecSum<T, SPoly, SBlindPoly>
