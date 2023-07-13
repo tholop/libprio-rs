@@ -1,9 +1,3 @@
-//! Implementation of a sampler from the Discrete Gaussian Distribution.
-//!
-//! Follows
-//!     Clément Canonne, Gautam Kamath, Thomas Steinke. The Discrete Gaussian for Differential Privacy. 2020.
-//!     <https://arxiv.org/abs/2004.00010>
-
 // Copyright (c) 2022 President and Fellows of Harvard College
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -44,16 +38,23 @@
 //   The following code is adapted from the opendp implementation to reduce dependencies:
 //       https://github.com/opendp/opendp/blob/main/rust/src/traits/samplers/cks20
 
+//! Implementation of a sampler from the Discrete Gaussian Distribution.
+//!
+//! Follows
+//!     Clément Canonne, Gautam Kamath, Thomas Steinke. The Discrete Gaussian for Differential Privacy. 2020.
+//!     <https://arxiv.org/abs/2004.00010>
+
 use num_bigint::{BigInt, BigUint};
+use num_rational::Ratio;
 use num_traits::{One, Zero};
 use rand::{distributions::Distribution, distributions::Uniform, Rng};
 
 use super::{
-    BigURational, DifferentialPrivacyBudget, DifferentialPrivacyDistribution,
-    DifferentialPrivacyStrategy, ZCdpBudget,
+    DifferentialPrivacyBudget, DifferentialPrivacyDistribution, DifferentialPrivacyStrategy,
+    DpError, ZCdpBudget,
 };
 
-/// Sample from the Bernoulli(1/2) distribution.
+/// sample from the Bernoulli(1/2) distribution.
 ///
 /// `sample_bernoulli_standard(rng)` returns numbers distributed as $Bernoulli(1/2)$.
 /// using the given random number generator for base randomness.
@@ -63,14 +64,14 @@ fn sample_bernoulli_standard<R: Rng + ?Sized>(rng: &mut R) -> bool {
     buffer[0] & 1 == 1
 }
 
-/// Sample from the Bernoulli(gamma) distribution, where $gamma /leq 1$.
+/// sample from the Bernoulli(gamma) distribution, where $gamma /leq 1$.
 ///
 /// `sample_bernoulli_frac(gamma, rng)` returns numbers distributed as $Bernoulli(gamma)$.
 /// using the given random number generator for base randomness.
-fn sample_bernoulli_frac<R: Rng + ?Sized>(gamma: &BigURational, rng: &mut R) -> bool {
+fn sample_bernoulli_frac<R: Rng + ?Sized>(gamma: &Ratio<BigUint>, rng: &mut R) -> bool {
     let d = gamma.denom();
     assert!(!d.is_zero());
-    assert!(gamma <= &BigURational::one());
+    assert!(gamma <= &Ratio::<BigUint>::one());
 
     // sample uniform biguint in [0,d)
     let s = rng.gen_range(BigUint::zero()..d.clone());
@@ -78,13 +79,13 @@ fn sample_bernoulli_frac<R: Rng + ?Sized>(gamma: &BigURational, rng: &mut R) -> 
     s < *gamma.numer()
 }
 
-/// Sample from the Bernoulli(exp(-gamma)) distribution, where $gamma \leq 1$.
+/// sample from the Bernoulli(exp(-gamma)) distribution, where $gamma \leq 1$.
 ///
 /// `sample_bernoulli_exp1(gamma, rng)` returns numbers distributed as $Bernoulli(exp(-gamma))$.
 /// using the given random number generator for base randomness.
-fn sample_bernoulli_exp1<R: Rng + ?Sized>(gamma: &BigURational, rng: &mut R) -> bool {
+fn sample_bernoulli_exp1<R: Rng + ?Sized>(gamma: &Ratio<BigUint>, rng: &mut R) -> bool {
     assert!(!gamma.denom().is_zero());
-    assert!(gamma <= &BigURational::one());
+    assert!(gamma <= &Ratio::<BigUint>::one());
     let mut k = BigUint::one();
     loop {
         if sample_bernoulli_frac(&(gamma / k.clone()), rng) {
@@ -95,29 +96,29 @@ fn sample_bernoulli_exp1<R: Rng + ?Sized>(gamma: &BigURational, rng: &mut R) -> 
     }
 }
 
-/// Sample from the Bernoulli(exp(-gamma)) distribution.
+/// sample from the Bernoulli(exp(-gamma)) distribution.
 ///
 /// `sample_bernoulli_exp(gamma, rng)` returns numbers distributed as $Bernoulli(exp(-gamma))$,
 /// using the given random number generator for base randomness.
-fn sample_bernoulli_exp<R: Rng + ?Sized>(gamma: &BigURational, rng: &mut R) -> bool {
+fn sample_bernoulli_exp<R: Rng + ?Sized>(gamma: &Ratio<BigUint>, rng: &mut R) -> bool {
     assert!(!gamma.denom().is_zero());
-    // Sample floor(n/d) independent Bernoulli(exp(-1))
+    // sample floor(n/d) independent Bernoulli(exp(-1))
     // If all are 1, return Bernoulli(exp(-(gamma-floor(gamma))))
-    let mut gamma: BigURational = gamma.clone();
-    while BigURational::one() < gamma {
-        if !sample_bernoulli_exp1(&BigURational::one(), rng) {
+    let mut gamma: Ratio<BigUint> = gamma.clone();
+    while Ratio::<BigUint>::one() < gamma {
+        if !sample_bernoulli_exp1(&Ratio::<BigUint>::one(), rng) {
             return false;
         }
-        gamma -= BigURational::one();
+        gamma -= Ratio::<BigUint>::one();
     }
     sample_bernoulli_exp1(&gamma, rng)
 }
 
-/// Sample from the geometric distribution with parameter 1 - exp(-gamma) (slow).
+/// sample from the geometric distribution with parameter 1 - exp(-gamma) (slow).
 ///
 /// `sample_geometric_exp_slow(gamma, rng)` returns numbers distributed according to
 /// $Geometric(1 - exp(-gamma))$, using the given random number generator for base randomness.
-fn sample_geometric_exp_slow<R: Rng + ?Sized>(gamma: &BigURational, rng: &mut R) -> BigUint {
+fn sample_geometric_exp_slow<R: Rng + ?Sized>(gamma: &Ratio<BigUint>, rng: &mut R) -> BigUint {
     assert!(!gamma.denom().is_zero());
     let mut k = BigUint::zero();
     loop {
@@ -129,11 +130,11 @@ fn sample_geometric_exp_slow<R: Rng + ?Sized>(gamma: &BigURational, rng: &mut R)
     }
 }
 
-/// Sample from the geometric distribution  with parameter 1 - exp(-gamma) (fast).
+/// sample from the geometric distribution  with parameter 1 - exp(-gamma) (fast).
 ///
 /// `sample_geometric_exp_fast(gamma, rng)` returns numbers distributed according to
 /// $Geometric(1 - exp(-gamma))$, using the given random number generator for base randomness.
-fn sample_geometric_exp_fast<R: Rng + ?Sized>(gamma: &BigURational, rng: &mut R) -> BigUint {
+fn sample_geometric_exp_fast<R: Rng + ?Sized>(gamma: &Ratio<BigUint>, rng: &mut R) -> BigUint {
     let d = gamma.denom();
     assert!(!d.is_zero());
     if gamma.is_zero() {
@@ -141,26 +142,25 @@ fn sample_geometric_exp_fast<R: Rng + ?Sized>(gamma: &BigURational, rng: &mut R)
     }
 
     // sample uniform biguint in [0,d)
-
     let usampler = Uniform::new(BigUint::zero(), d);
     let mut u = usampler.sample(rng);
 
-    while !sample_bernoulli_exp(&BigURational::new(u.clone(), d.clone()), rng) {
+    while !sample_bernoulli_exp(&Ratio::<BigUint>::new(u.clone(), d.clone()), rng) {
         u = usampler.sample(rng);
     }
 
-    let v2 = sample_geometric_exp_slow(&BigURational::one(), rng);
+    let v2 = sample_geometric_exp_slow(&Ratio::<BigUint>::one(), rng);
     v2 * d + u / gamma.numer()
 }
 
-/// Sample from the discrete laplace distribution.
+/// sample from the discrete laplace distribution.
 ///
 /// `sample_discrete_laplace(scale, rng)` returns numbers distributed according to
 /// $\mathcal{L}_\mathbb{Z}(0, scale)$, using the given random number generator for base randomness.
 ///
 /// # Citation
 /// * [CKS20 The Discrete Gaussian for Differential Privacy](https://arxiv.org/abs/2004.00010)
-pub fn sample_discrete_laplace<R: Rng + ?Sized>(scale: &BigURational, rng: &mut R) -> BigInt {
+fn sample_discrete_laplace<R: Rng + ?Sized>(scale: &Ratio<BigUint>, rng: &mut R) -> BigInt {
     let (n, d) = (scale.numer(), scale.denom());
     assert!(!d.is_zero());
     if n.is_zero() {
@@ -176,7 +176,7 @@ pub fn sample_discrete_laplace<R: Rng + ?Sized>(scale: &BigURational, rng: &mut 
     }
 }
 
-/// Sample from the discrete gaussian distribution.
+/// sample from the discrete gaussian distribution.
 ///
 /// `sample_discrete_gaussian(sigma, rng)` returns `BigInt` numbers distributed as
 /// $\mathcal{N}_\mathbb{Z}(0, sigma^2)$,
@@ -184,7 +184,7 @@ pub fn sample_discrete_laplace<R: Rng + ?Sized>(scale: &BigURational, rng: &mut 
 ///
 /// # Citation
 /// * [CKS20 The Discrete Gaussian for Differential Privacy](https://arxiv.org/abs/2004.00010)
-pub fn sample_discrete_gaussian<R: Rng + ?Sized>(sigma: &BigURational, rng: &mut R) -> BigInt {
+fn sample_discrete_gaussian<R: Rng + ?Sized>(sigma: &Ratio<BigUint>, rng: &mut R) -> BigInt {
     assert!(!sigma.denom().is_zero());
     if sigma.is_zero() {
         return 0.into();
@@ -194,12 +194,12 @@ pub fn sample_discrete_gaussian<R: Rng + ?Sized>(sigma: &BigURational, rng: &mut
         let y = sample_discrete_laplace(&t, rng);
 
         // absolute value without type conversion
-        let y_abs: BigURational = BigUint::new(y.to_u32_digits().1).into();
+        let y_abs: Ratio<BigUint> = BigUint::new(y.to_u32_digits().1).into();
 
         let sub = sigma.pow(2) / t.clone();
         let fact = (sigma.pow(2) * BigUint::from(2u8)).recip();
 
-        let prob: BigURational = if y_abs < sub {
+        let prob: Ratio<BigUint> = if y_abs < sub {
             (sub - y_abs).pow(2) * fact
         } else {
             (y_abs - sub).pow(2) * fact
@@ -210,7 +210,7 @@ pub fn sample_discrete_gaussian<R: Rng + ?Sized>(sigma: &BigURational, rng: &mut
     }
 }
 
-/// Samples `BigInt` numbers according to the discrete Gaussian distribution with mean zero.
+/// samples `BigInt` numbers according to the discrete Gaussian distribution with mean zero.
 /// The distribution is defined over the integers, represented by arbitrary-precision integers.
 /// The sampling procedure follows [[CKS20]].
 ///
@@ -218,14 +218,17 @@ pub fn sample_discrete_gaussian<R: Rng + ?Sized>(sigma: &BigURational, rng: &mut
 #[derive(Clone, Debug)]
 pub struct DiscreteGaussian {
     /// The standard deviation of the distribution.
-    std: BigURational,
+    std: Ratio<BigUint>,
 }
 
 impl DiscreteGaussian {
     /// Create a new sampler from the Discrete Gaussian Distribution with the given
-    /// standard deviation and mean zero.
-    pub fn new(std: BigURational) -> DiscreteGaussian {
-        DiscreteGaussian { std }
+    /// standard deviation and mean zero. Errors if the input has denominator zero.
+    pub fn new_checked(std: Ratio<BigUint>) -> Result<DiscreteGaussian, DpError> {
+        if std.denom().is_zero() {
+            return Err(DpError::ZeroDenominator());
+        }
+        Ok(DiscreteGaussian { std })
     }
 }
 
@@ -254,10 +257,10 @@ pub type ZCdpDiscreteGaussian = DiscreteGaussianDpStrategy<ZCdpBudget>;
 impl DifferentialPrivacyStrategy for DiscreteGaussianDpStrategy<ZCdpBudget> {
     type Budget = ZCdpBudget;
     type Distribution = DiscreteGaussian;
-    type Sensitivity = BigURational;
+    type Sensitivity = Ratio<BigUint>;
 
-    fn from_budget(b: ZCdpBudget) -> DiscreteGaussianDpStrategy<ZCdpBudget> {
-        DiscreteGaussianDpStrategy { budget: b }
+    fn from_budget(budget: ZCdpBudget) -> DiscreteGaussianDpStrategy<ZCdpBudget> {
+        DiscreteGaussianDpStrategy { budget }
     }
 
     /// Create a new sampler from the Discrete Gaussian Distribution with a standard
@@ -266,8 +269,14 @@ impl DifferentialPrivacyStrategy for DiscreteGaussianDpStrategy<ZCdpBudget> {
     /// `sensitivity`, following Theorem 4 from [[CKS20]]
     ///
     /// [CKS20]: https://arxiv.org/pdf/2004.00010.pdf
-    fn create_distribution(&self, sensitivity: BigURational) -> DiscreteGaussian {
-        DiscreteGaussian::new(sensitivity / self.budget.epsilon.clone())
+    fn create_distribution(
+        &self,
+        sensitivity: Ratio<BigUint>,
+    ) -> Result<DiscreteGaussian, DpError> {
+        match DiscreteGaussian::new_checked(sensitivity / self.budget.epsilon.clone()) {
+            Ok(d) => Ok(d),
+            Err(e) => Err(e),
+        }
     }
 }
 
@@ -275,14 +284,18 @@ impl DifferentialPrivacyStrategy for DiscreteGaussianDpStrategy<ZCdpBudget> {
 mod tests {
 
     use super::*;
+    use crate::dp::Rational;
     use crate::vdaf::prg::{Seed, SeedStreamSha3};
 
     use num_bigint::BigUint;
+    use rand::distributions::Distribution;
     use rand::SeedableRng;
 
     #[test]
     fn test_discrete_gaussian() {
-        let sampler = DiscreteGaussian::new(BigURational::from_integer(BigUint::from(5u8)));
+        let sampler =
+            DiscreteGaussian::new_checked(Ratio::<BigUint>::from_integer(BigUint::from(5u8)))
+                .unwrap();
 
         // check samples are consistent
         let mut rng = SeedStreamSha3::from_seed(Seed::from_bytes([0u8; 16]));
@@ -302,7 +315,9 @@ mod tests {
     /// by using the constructor of `DiscreteGaussian` directly.
     fn test_zcdp_discrete_gaussian() {
         // sample from a manually created distribution
-        let sampler1 = DiscreteGaussian::new(BigURational::from_integer(BigUint::from(4u8)));
+        let sampler1 =
+            DiscreteGaussian::new_checked(Ratio::<BigUint>::from_integer(BigUint::from(4u8)))
+                .unwrap();
         let mut rng = SeedStreamSha3::from_seed(Seed::from_bytes([0u8; 16]));
         let samples1: Vec<i8> = (0..10)
             .map(|_| i8::try_from(sampler1.sample(&mut rng)).unwrap())
@@ -310,9 +325,11 @@ mod tests {
 
         // sample from the distribution created by the `zcdp` strategy
         let zcdp = ZCdpDiscreteGaussian {
-            budget: ZCdpBudget::from_float(0.25).unwrap(),
+            budget: ZCdpBudget::new(Rational::try_from(0.25).unwrap()),
         };
-        let sampler2 = zcdp.create_distribution(BigURational::from_integer(1u8.into()));
+        let sampler2 = zcdp
+            .create_distribution(Ratio::<BigUint>::from_integer(1u8.into()))
+            .unwrap();
         let mut rng2 = SeedStreamSha3::from_seed(Seed::from_bytes([0u8; 16]));
         let samples2: Vec<i8> = (0..10)
             .map(|_| i8::try_from(sampler2.sample(&mut rng2)).unwrap())

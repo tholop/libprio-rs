@@ -1,12 +1,12 @@
 // SPDX-License-Identifier: MPL-2.0
 
 //! Differential privacy (DP) primitives.
-use num_bigint::{BigUint, TryFromBigIntError};
+use num_bigint::{BigInt, BigUint, TryFromBigIntError};
 use num_rational::{BigRational, Ratio};
 
 /// Errors propagated by methods in this module.
 #[derive(Debug, thiserror::Error)]
-pub enum DPError {
+pub enum DpError {
     /// Tried to use an infinite float as privacy parameter.
     #[error("DP error: input float was infinite.")]
     InfinityFloat(),
@@ -17,42 +17,40 @@ pub enum DPError {
 
     /// Tried to convert BigInt into something incompatible.
     #[error("DP error: {0}")]
-    BigIntConversion(#[from] TryFromBigIntError<()>),
+    BigIntConversion(#[from] TryFromBigIntError<BigInt>),
 }
-
-/// Alias for arbitrary precision unsigned rationals.
-pub type BigURational = Ratio<BigUint>;
 
 /// Positive finite precision rational number to represent DP and noise distribution parameters in
 /// protocol messages and manipulate them without rounding errors.
 #[derive(Clone, Debug)]
-pub struct Rational {
-    numerator: u32,
-    denominator: u32,
-}
+pub struct Rational(Ratio<BigUint>);
 
 impl Rational {
-    /// Construct a `URational` number from numerator and denominator. Errors if denominator is zero.
-    pub fn from_unsigned<T>(n: T, d: T) -> Result<Self, DPError>
+    /// Construct a [`Rational`] number from numerator and denominator. Errors if denominator is zero.
+    pub fn from_unsigned<T>(n: T, d: T) -> Result<Self, DpError>
     where
-        T: Into<u32>,
+        T: Into<u128>,
     {
-        let (n, d) = (n.into(), d.into());
-        if d == 0u32 {
-            Err(DPError::ZeroDenominator())
+        // we don't want to expose BigUint in the public api, hence the Into<u128> bound
+        let d = d.into();
+        if d == 0u128 {
+            Err(DpError::ZeroDenominator())
         } else {
-            Ok(Rational {
-                numerator: n,
-                denominator: d,
-            })
+            Ok(Rational(Ratio::<BigUint>::new(n.into().into(), d.into())))
         }
     }
 }
 
-impl From<Rational> for BigURational {
-    // we don't want to expose BigUint to the public API, hence the Into<u128> requirement instead
-    fn from(r: Rational) -> Self {
-        BigURational::new(r.numerator.into(), r.denominator.into())
+impl TryFrom<f32> for Rational {
+    type Error = DpError;
+    fn try_from(value: f32) -> Result<Self, Self::Error> {
+        match BigRational::from_float(value) {
+            Some(y) => Ok(Rational(Ratio::<BigUint>::new(
+                y.numer().clone().try_into()?,
+                y.denom().clone().try_into()?,
+            ))),
+            None => Err(DpError::InfinityFloat())?,
+        }
     }
 }
 
@@ -66,7 +64,7 @@ pub trait DifferentialPrivacyDistribution {}
 ///
 /// [BS16]: https://arxiv.org/pdf/1605.02065.pdf
 pub struct ZeroConcentratedDifferentialPrivacyBudget {
-    epsilon: BigURational,
+    epsilon: Ratio<BigUint>,
 }
 
 /// Alias for ZeroConcentratedDifferentialPrivacyBudget.
@@ -78,33 +76,16 @@ impl ZCdpBudget {
     ///
     /// [CKS20]: https://arxiv.org/pdf/2004.00010.pdf
     pub fn new(epsilon: Rational) -> Self {
-        ZCdpBudget {
-            epsilon: epsilon.into(),
-        }
-    }
-
-    /// Create a budget for parameter `epsilon`, using the notation from [[CKS20]] where `rho = (epsilon**2)/2`
-    /// for a `rho`-ZCDP budget. Returns a `DPError` if the input float is not finite and positive.
-    ///
-    /// [CKS20]: https://arxiv.org/pdf/2004.00010.pdf
-    pub fn from_float(epsilon: f32) -> Result<Self, DPError> {
-        let eps_rational = match BigRational::from_float(epsilon) {
-            Some(y) => {
-                BigURational::new(BigUint::try_from(y.numer())?, BigUint::try_from(y.denom())?)
-            }
-            None => Err(DPError::InfinityFloat())?,
-        };
-        Ok(ZeroConcentratedDifferentialPrivacyBudget {
-            epsilon: eps_rational,
-        })
+        ZCdpBudget { epsilon: epsilon.0 }
     }
 }
 
 impl DifferentialPrivacyBudget for ZCdpBudget {}
-/// Strategy to make aggregate shares differentially private, e.g. by adding noise from a specific
+
+/// Strategy to make aggregate results differentially private, e.g. by adding noise from a specific
 /// type of distribution instantiated with a given DP budget.
 pub trait DifferentialPrivacyStrategy {
-    /// The type of the DP budget, i.e. the flavour of differential privacy that can be obtained
+    /// The type of the DP budget, i.e. the variant of differential privacy that can be obtained
     /// by using this strategy.
     type Budget: DifferentialPrivacyBudget;
     /// The distribution type this strategy will use to generate the noise.
@@ -117,9 +98,9 @@ pub trait DifferentialPrivacyStrategy {
     fn from_budget(b: Self::Budget) -> Self;
 
     /// Create a new distribution parametrized s.t. adding samples to the result of a function
-    /// with sensitivity `s` will yield differential privacy of the flavour given in the
-    /// `Budget` type.
-    fn create_distribution(&self, s: Self::Sensitivity) -> Self::Distribution;
+    /// with sensitivity `s` will yield differential privacy of the DP variant given in the
+    /// `Budget` type. Can error upon invalid parameters.
+    fn create_distribution(&self, s: Self::Sensitivity) -> Result<Self::Distribution, DpError>;
 }
 
 pub mod distributions;

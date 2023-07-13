@@ -173,7 +173,7 @@
 
 pub mod compatible_float;
 
-use crate::dp::{distributions::ZCdpDiscreteGaussian, BigURational, DifferentialPrivacyStrategy};
+use crate::dp::{distributions::ZCdpDiscreteGaussian, DifferentialPrivacyStrategy, DpError};
 use crate::field::{Field128, FieldElement, FieldElementExt, FieldElementWithInteger};
 use crate::flp::gadgets::{BlindPolyEval, ParallelSumGadget, PolyEval};
 use crate::flp::types::fixedpoint_l2::compatible_float::CompatibleFloat;
@@ -181,13 +181,10 @@ use crate::flp::{FlpError, Gadget, Type, TypeWithNoise};
 use crate::polynomial::poly_range_check;
 use fixed::traits::Fixed;
 use num_bigint::{BigInt, BigUint, TryFromBigIntError};
+use num_rational::Ratio;
 use rand::{distributions::Distribution, Rng};
 use std::ops::Neg;
-
 use std::{convert::TryFrom, convert::TryInto, fmt::Debug, marker::PhantomData};
-
-/// The privacy parameter which is passed to `FixedPointBoundedL2VecSum` has this type.
-pub type PrivacyParameterType = BigURational;
 
 /// The fixed point vector sum data type. Each measurement is a vector of fixed point numbers of
 /// type `T`, and the aggregate result is the float vector of the sum of the measurements.
@@ -631,7 +628,9 @@ where
         let sensitivity = BigUint::from(2u128).pow(self.bits_per_entry as u32);
 
         // 1. initialize sampler
-        let sampler = dp_strategy.create_distribution(BigURational::from_integer(sensitivity));
+        let sampler = dp_strategy
+            .create_distribution(Ratio::<BigUint>::from_integer(sensitivity))
+            .map_err(FlpError::DifferentialPrivacy)?;
 
         for entry in agg_share.iter_mut() {
             // we get the noise as bigint, so we have to convert it to i128,
@@ -642,7 +641,7 @@ where
             let noise: BigInt = sampler.sample(rng);
             let noise: BigInt = noise % BigInt::from(Field128::modulus());
             let noise: i128 = noise.try_into().map_err(|e: TryFromBigIntError<BigInt>| {
-                FlpError::DifferentialPrivacyNoise(Box::new(e))
+                FlpError::DifferentialPrivacy(DpError::BigIntConversion(e))
             })?;
 
             // Compute the field element corresponding to the i128 value.

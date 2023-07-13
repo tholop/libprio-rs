@@ -8,6 +8,7 @@
 /// standard deviations. See test case below.
 use super::{
     DifferentialPrivacyBudget, DifferentialPrivacyDistribution, DifferentialPrivacyStrategy,
+    DpError,
 };
 
 /// The privacy budget for the product strategy is a pair of budgets.
@@ -51,10 +52,10 @@ where
         }
     }
 
-    fn create_distribution(&self, s: Self::Sensitivity) -> Self::Distribution {
-        let a = self.strategy.0.create_distribution(s.0);
-        let b = self.strategy.1.create_distribution(s.1);
-        ProductDpDistribution(a, b)
+    fn create_distribution(&self, s: Self::Sensitivity) -> Result<Self::Distribution, DpError> {
+        let a = self.strategy.0.create_distribution(s.0)?;
+        let b = self.strategy.1.create_distribution(s.1)?;
+        Ok(ProductDpDistribution(a, b))
     }
 }
 
@@ -63,9 +64,11 @@ where
 mod tests {
     use super::*;
     use crate::{
-        dp::{distributions::ZCdpDiscreteGaussian, BigURational, ZCdpBudget},
+        dp::{distributions::ZCdpDiscreteGaussian, ZCdpBudget},
         vdaf::prg::{Seed, SeedStreamSha3},
     };
+    use num_bigint::BigUint;
+    use num_rational::Ratio;
     use rand::{distributions::Distribution, SeedableRng};
 
     #[test]
@@ -75,18 +78,20 @@ mod tests {
 
         // Choosing budgets and sensitivities for both gaussians.
         let budget0 = ZCdpBudget {
-            epsilon: BigURational::from_integer(1u8.into()),
+            epsilon: Ratio::<BigUint>::from_integer(1u8.into()),
         };
         let budget1 = ZCdpBudget {
-            epsilon: BigURational::from_integer(2u8.into()),
+            epsilon: Ratio::<BigUint>::from_integer(2u8.into()),
         };
-        let sensitivity0 = BigURational::from_integer(10u8.into());
-        let sensitivity1 = BigURational::from_integer(20u8.into());
+        let sensitivity0 = Ratio::<BigUint>::from_integer(10u8.into());
+        let sensitivity1 = Ratio::<BigUint>::from_integer(20u8.into());
 
         // Creating the strategy and using it to get the (pair of) distributions
         // is done exactly the same way as for e.g. ZCdpDicreteGaussian.
         let strategy = MyStrategy::from_budget((budget0, budget1));
-        let distribution = strategy.create_distribution((sensitivity0, sensitivity1));
+        let distribution = strategy
+            .create_distribution((sensitivity0, sensitivity1))
+            .unwrap();
 
         let mut rng = SeedStreamSha3::from_seed(Seed::from_bytes([0u8; 16]));
 
