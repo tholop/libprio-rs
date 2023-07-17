@@ -143,13 +143,12 @@
 //!
 //! Bounding the submission norm bounds the impact that changing a single
 //! client's submission can have on the aggregate. That is, the so-called
-//! sensitivicy of the procedure is equal to two times the norm bound, namely
+//! L2-sensitivity of the procedure is equal to two times the norm bound, namely
 //! `2^n`. Therefore, adding discrete Gaussian noise with standard deviation
 //! `sigma = `(2^n)/epsilon` for some `epsilon` will make the procedure [`(epsilon^2)/2`
 //! zero-concentrated differentially private](https://arxiv.org/abs/2004.00010).
-//! `eps` is given as a parameter for type construction. Projecting onto the
-//! field and decoding retains the privacy guarantee due to post-processing
-//! invariance.
+//! `epsilon` is given as a parameter to the `add_noise_to_result` function, as part of the
+//! `dp_strategy` argument of type [`ZCdpDiscreteGaussian`].
 //!
 //! ### Differences in the computation because of distribution
 //!
@@ -196,8 +195,8 @@ use std::{convert::TryFrom, convert::TryInto, fmt::Debug, marker::PhantomData};
 /// particular, exactly the following types are supported:
 /// `FixedI16<U15>`, `FixedI32<U31>` and `FixedI64<U63>`.
 ///
-/// The type provides an `add_noise_to_agg_share` function that will add discrete Gaussian noise to the
-/// aggregate, calibrated to the privacy parameter given at object construction. This will result
+/// The type provides an [`add_noise`] function that adds discrete Gaussian noise to an
+/// aggregate result, calibrated to the passed privacy budget. This will result
 /// in the aggregate satisfying zero-concentrated differential privacy.
 ///
 /// Depending on the size of the vector that needs to be transmitted, a corresponding field type has
@@ -249,9 +248,7 @@ where
     SBlindPoly: ParallelSumGadget<Field128, BlindPolyEval<Field128>> + Clone,
 {
     /// Return a new [`FixedPointBoundedL2VecSum`] type parameter. Each value of this type is a
-    /// fixed point vector with `entries` entries. The aggregation result will satisfy
-    /// `1/2 * privacy_parameter^2` zero-concentrated differential privacy after the
-    /// `add_noise_to_agg_share` function is called on it.
+    /// fixed point vector with `entries` entries.
     pub fn new(entries: usize) -> Result<Self, FlpError> {
         // (0) initialize constants
         let fi_one = u128::from(Field128::one());
@@ -350,10 +347,14 @@ where
         })
     }
 
+    /// This noising function can be called on the aggregation result to make
+    /// the entire aggregation process differentially private. The noise is
+    /// calibrated to result in a guarantee of `1/2 * epsilon^2` zero-concentrated
+    /// differential privacy, where `epsilon` is given by `dp_strategy.budget`.
     fn add_noise<R: Rng>(
         &self,
         dp_strategy: &ZCdpDiscreteGaussian,
-        agg_share: &mut [Field128],
+        agg_result: &mut [Field128],
         rng: &mut R,
     ) -> Result<(), FlpError> {
         // generate and add discrete gaussian noise for each entry
@@ -365,7 +366,7 @@ where
         let sampler = dp_strategy.create_distribution(Ratio::from_integer(sensitivity))?;
 
         // 2. Generate noise for each slice entry and apply it.
-        for entry in agg_share.iter_mut() {
+        for entry in agg_result.iter_mut() {
             // (a) Generate noise.
             let noise: BigInt = sampler.sample(rng);
 
@@ -661,10 +662,10 @@ where
     fn add_noise_to_result(
         &self,
         dp_strategy: &ZCdpDiscreteGaussian,
-        agg_share: &mut [Self::Field],
+        agg_result: &mut [Self::Field],
         _num_measurements: usize,
     ) -> Result<(), FlpError> {
-        self.add_noise(dp_strategy, agg_share, &mut SeedStreamSha3::from_entropy())
+        self.add_noise(dp_strategy, agg_result, &mut SeedStreamSha3::from_entropy())
     }
 }
 

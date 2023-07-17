@@ -1,7 +1,5 @@
-#[cfg(feature = "experimental")]
-use fixed_macro::fixed;
-#[cfg(feature = "experimental")]
-use prio::flp::types::fixedpoint_l2::zero_privacy_parameter;
+// use fixed_macro::fixed;
+// use prio::flp::types::fixedpoint_l2::zero_privacy_parameter;
 
 use prio::{
     benchmarked::benchmarked_v2_prove,
@@ -65,7 +63,6 @@ fn main() {
         prio3_input_share_size(prio3.shard(&measurement, &nonce).unwrap())
     );
 
-    #[cfg(feature = "experimental")]
     {
         let len = 1000;
         let prio3 =

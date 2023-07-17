@@ -1166,14 +1166,8 @@ where
         agg_share: &mut Self::AggregateShare,
         num_measurements: usize,
     ) -> Result<(), VdafError> {
-        let len_before = agg_share.0.len();
         self.typ
             .add_noise_to_result(dp_strategy, &mut agg_share.0, num_measurements)?;
-        if len_before != agg_share.0.len() {
-            return Err(VdafError::Uncategorized(
-                "add_noise changed length of aggregate share.".to_string(),
-            ));
-        }
         Ok(())
     }
 }

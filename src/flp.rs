@@ -562,7 +562,7 @@ where
     fn add_noise_to_result(
         &self,
         _dp_strategy: &S,
-        _agg_share: &mut [Self::Field],
+        _agg_result: &mut [Self::Field],
         _num_measurements: usize,
     ) -> Result<(), FlpError>;
 }

@@ -8,8 +8,11 @@ use num_rational::{BigRational, Ratio};
 #[derive(Debug, thiserror::Error)]
 pub enum DpError {
     /// Tried to use an infinite float as privacy parameter.
-    #[error("DP error: input float was infinite.")]
-    InfinityFloat(),
+    #[error(
+        "DP error: input value was not a valid privacy parameter. \
+             It should to be a non-negative, finite float."
+    )]
+    InvalidFloat(),
 
     /// Tried to construct a rational number with zero denominator.
     #[error("DP error: input denominator was zero.")]
@@ -49,7 +52,7 @@ impl TryFrom<f32> for Rational {
                 y.numer().clone().try_into()?,
                 y.denom().clone().try_into()?,
             ))),
-            None => Err(DpError::InfinityFloat())?,
+            None => Err(DpError::InvalidFloat())?,
         }
     }
 }
@@ -80,7 +83,7 @@ impl ZCdpBudget {
     }
 }
 
-impl DifferentialPrivacyBudget for ZCdpBudget {}
+impl DifferentialPrivacyBudget for ZeroConcentratedDifferentialPrivacyBudget {}
 
 /// Strategy to make aggregate results differentially private, e.g. by adding noise from a specific
 /// type of distribution instantiated with a given DP budget.
@@ -94,7 +97,7 @@ pub trait DifferentialPrivacyStrategy {
     type Sensitivity;
 
     /// Create a strategy from a differential privacy budget. The distribution created with
-    /// `create_disctribution` should provide the amount of privacy specified here.
+    /// `create_distribution` should provide the amount of privacy specified here.
     fn from_budget(b: Self::Budget) -> Self;
 
     /// Create a new distribution parametrized s.t. adding samples to the result of a function
