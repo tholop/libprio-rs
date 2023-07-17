@@ -109,7 +109,7 @@ pub enum FlpError {
     #[cfg(feature = "experimental")]
     /// An error happened during noising.
     #[error("differential privacy error: {0}")]
-    DifferentialPrivacy(crate::dp::DpError),
+    DifferentialPrivacy(#[from] crate::dp::DpError),
 
     /// Unit test error.
     #[cfg(test)]
@@ -559,7 +559,6 @@ where
     S: DifferentialPrivacyStrategy,
 {
     /// Optionally add noise to the aggregate share to obtain differential privacy.
-    /// Post-condition: The size of `_aggregate_share` has not changed.
     fn add_noise_to_result(
         &self,
         _dp_strategy: &S,

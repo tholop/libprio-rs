@@ -145,7 +145,7 @@
 //! client's submission can have on the aggregate. That is, the so-called
 //! sensitivicy of the procedure is equal to two times the norm bound, namely
 //! `2^n`. Therefore, adding discrete Gaussian noise with standard deviation
-//! `sigma = `(2^n)/eps` for some `eps` will make the procedure [`(eps^2)/2`
+//! `sigma = `(2^n)/epsilon` for some `epsilon` will make the procedure [`(epsilon^2)/2`
 //! zero-concentrated differentially private](https://arxiv.org/abs/2004.00010).
 //! `eps` is given as a parameter for type construction. Projecting onto the
 //! field and decoding retains the privacy guarantee due to post-processing
@@ -168,7 +168,6 @@
 //!  - `self.bits_per_entry`           is `n`
 //!  - `self.entries`                  is `d`
 //!  - `self.bits_for_norm`            is `2n-2`
-//!  - `self.noise_standard_deviation` is `sigma`
 //!
 
 pub mod compatible_float;
@@ -363,9 +362,7 @@ where
         let sensitivity = BigUint::from(2u128).pow(self.bits_per_entry as u32);
 
         // 1. initialize sampler
-        let sampler = dp_strategy
-            .create_distribution(Ratio::<BigUint>::from_integer(sensitivity))
-            .map_err(FlpError::DifferentialPrivacy)?;
+        let sampler = dp_strategy.create_distribution(Ratio::from_integer(sensitivity))?;
 
         // 2. Generate noise for each slice entry and apply it.
         for entry in agg_share.iter_mut() {
