@@ -1,5 +1,4 @@
-// use fixed_macro::fixed;
-// use prio::flp::types::fixedpoint_l2::zero_privacy_parameter;
+use fixed_macro::fixed;
 
 use prio::{
     benchmarked::benchmarked_v2_prove,
@@ -65,9 +64,7 @@ fn main() {
 
     {
         let len = 1000;
-        let prio3 =
-            Prio3::new_fixedpoint_boundedl2_vec_sum(num_shares, len, zero_privacy_parameter())
-                .unwrap();
+        let prio3 = Prio3::new_fixedpoint_boundedl2_vec_sum(num_shares, len).unwrap();
         let fp_num = fixed!(0.0001: I1F15);
         let measurement = vec![fp_num; len];
         println!(
@@ -76,12 +73,7 @@ fn main() {
             prio3_input_share_size(prio3.shard(&measurement, &nonce).unwrap())
         );
 
-        let prio3 = Prio3::new_fixedpoint_boundedl2_vec_sum_multithreaded(
-            num_shares,
-            len,
-            zero_privacy_parameter(),
-        )
-        .unwrap();
+        let prio3 = Prio3::new_fixedpoint_boundedl2_vec_sum_multithreaded(num_shares, len).unwrap();
         println!(
             "prio3 fixedpoint16 boundedl2 vec multithreaded ({} entries) size = {}",
             len,
