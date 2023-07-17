@@ -182,10 +182,10 @@ use crate::polynomial::poly_range_check;
 use crate::vdaf::prg::SeedStreamSha3;
 use fixed::traits::Fixed;
 use num_bigint::{BigInt, BigUint, TryFromBigIntError};
+use num_integer::Integer;
 use num_rational::Ratio;
 use rand::{distributions::Distribution, Rng};
 use rand_core::SeedableRng;
-use std::ops::Neg;
 use std::{convert::TryFrom, convert::TryInto, fmt::Debug, marker::PhantomData};
 
 /// The fixed point vector sum data type. Each measurement is a vector of fixed point numbers of
@@ -369,60 +369,26 @@ where
 
         // 2. Generate noise for each slice entry and apply it.
         for entry in agg_share.iter_mut() {
-            // (a) noise as i128
-            //
-            // We get the noise as BigInt, but we have to fit it into a finite
-            // field. So first we convert it into i128 by taking the remainder
-            // wrt the field modulus.
-
-            // Detailed explanation:
-            //
-            // The noise, as returned by the sampler is a BigInt, i.e., any
-            // possible integer. But the field only contains values in the range
-            // [0..modulus). So first we use the `%` operator to truncate the
-            // noise into the range (-modulus/2,modulus/2).
-            //
-            // Note that `%` is the "remainder" operation, and preserves the
-            // sign of the first operand if the second operand is positive.
-            // This is exactly the behaviour that we want, as we want to keep
-            // the information whether the noise was negative or positive.
-            //
-            // After taking the remainder, we know that the value fits into i128
-            // since `modulus < 2^128` and thus `-2^127 < noise < 2^127`.
-            //
+            // (a) Generate noise.
             let noise: BigInt = sampler.sample(rng);
-            let noise: BigInt = noise % (BigInt::from(Field128::modulus()) / 2);
-            let noise: i128 = noise.try_into().map_err(|e: TryFromBigIntError<BigInt>| {
+
+            // (b) Put noise into field.
+            //
+            // The noise is generated as BigInt, but has to fit into the Field128,
+            // which has modulus `Field129::modulus()`. Thus we use `BigInt::mod_floor()`
+            // to calculate `noise mod modulus`. This value fits into `u128`, and
+            // can be then put into the field.
+            //
+            // Note: we cannot use the operator `%` here, since it is not the mathematical
+            // modulus operation: for negative inputs and positive modulus it gives a
+            // negative result!
+            let noise: BigInt = noise.mod_floor(&BigInt::from(Field128::modulus()));
+            let noise: u128 = noise.try_into().map_err(|e: TryFromBigIntError<BigInt>| {
                 FlpError::DifferentialPrivacy(DpError::BigIntConversion(e))
             })?;
+            let f_noise = Field128::from(Field128::valid_integer_try_from::<u128>(noise)?);
 
-            // (b) Compute the field element corresponding to the i128 value.
-            //
-            // For this we compute the absolute value of the noise,
-            // put it into the field, and then invert that field value
-            // if the original noise has been negative.
-            //
-            // Detailed explanation:
-            //
-            // The underlying representation of the field is an unsigned (!)
-            // integer. The negative values in `F` are encoded by positive,
-            // "wrapped-around" values in the underlying u128.
-            // That is, a value `-2^127 < noise < 0` is represented by the
-            // value `modulus - noise`.
-            //
-            // Instead of taking care of this conversion manually, we let the
-            // implementation of the field handle this case, by calling `Field128::neg()`
-            // after embedding the absolute value into the field.
-            //
-            let pos_noise: u128 = noise.abs_diff(0);
-            let f_pos_noise = Field128::from(Field128::valid_integer_try_from::<u128>(pos_noise)?);
-            let f_noise: Field128 = if noise < 0 {
-                f_pos_noise.neg()
-            } else {
-                f_pos_noise
-            };
-
-            // (c) Apply generated noise to each entry of the aggregate share.
+            // (c) Apply noise to each entry of the aggregate share.
             *entry += f_noise;
         }
 
