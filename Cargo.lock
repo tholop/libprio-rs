@@ -781,6 +781,7 @@ dependencies = [
  "num-integer",
  "num-traits",
  "rand",
+ "serde",
 ]
 
 [[package]]
@@ -803,6 +804,7 @@ dependencies = [
  "num-bigint",
  "num-integer",
  "num-traits",
+ "serde",
 ]
 
 [[package]]
