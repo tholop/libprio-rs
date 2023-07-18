@@ -2,13 +2,25 @@
 
 //! A collection of [`Type`](crate::flp::Type) implementations.
 
-use crate::field::{FftFriendlyFieldElement, FieldElementExt};
+use crate::dp::distributions::ZCdpDiscreteGaussian;
+use crate::dp::DifferentialPrivacyStrategy;
+use crate::dp::DpError;
+use crate::field::FieldElementWithInteger;
+use crate::field::{FftFriendlyFieldElement, Field128, FieldElementExt};
 use crate::flp::gadgets::{BlindPolyEval, Mul, ParallelSumGadget, PolyEval};
+use crate::flp::TypeWithNoise;
 use crate::flp::{FlpError, Gadget, Type};
 use crate::polynomial::poly_range_check;
+use crate::vdaf::prg::SeedStreamSha3;
+use num_bigint::{BigInt, BigUint, TryFromBigIntError};
+use num_integer::Integer;
+use num_rational::Ratio;
+use rand::distributions::Distribution;
+use rand_core::SeedableRng;
 use std::convert::TryInto;
 use std::fmt::{self, Debug};
 use std::marker::PhantomData;
+
 /// The counter data type. Each measurement is `0` or `1` and the aggregate result is the sum of the measurements (i.e., the total number of `1s`).
 #[derive(Clone, PartialEq, Eq)]
 pub struct Count<F> {
@@ -426,6 +438,38 @@ impl<F: FftFriendlyFieldElement> Type for Histogram<F> {
 
     fn query_rand_len(&self) -> usize {
         1
+    }
+}
+
+impl TypeWithNoise<ZCdpDiscreteGaussian> for Histogram<Field128> {
+    fn add_noise_to_result(
+        &self,
+        dp_strategy: &ZCdpDiscreteGaussian,
+        agg_result: &mut [Self::Field],
+        _num_measurements: usize,
+    ) -> Result<(), FlpError> {
+        // self.add_noise(dp_strategy, agg_result, &mut SeedStreamSha3::from_entropy())
+        let rng = &mut SeedStreamSha3::from_entropy();
+
+        // TODO: import comments and use sigma square
+        // Over approximation
+        let sensitivity = Ratio::new(BigUint::from(665857u32), BigUint::from(470832u32));
+        let sampler = dp_strategy.create_distribution(sensitivity)?;
+
+        for entry in agg_result.iter_mut() {
+            // (a) Generate noise.
+            let noise: BigInt = sampler.sample(rng);
+            let noise: BigInt = noise.mod_floor(&BigInt::from(Field128::modulus()));
+            let noise: u128 = noise.try_into().map_err(|e: TryFromBigIntError<BigInt>| {
+                FlpError::DifferentialPrivacy(DpError::BigIntConversion(e))
+            })?;
+            let f_noise = Field128::from(Field128::valid_integer_try_from::<u128>(noise)?);
+
+            // (c) Apply noise to each entry of the aggregate share.
+            *entry += f_noise;
+        }
+
+        Ok(())
     }
 }
 
